@@ -2578,16 +2578,11 @@ async function exportReportePPT() {
   s2.addText("Indicadores del mes", { x:0.4, y:0.65, w:9, h:0.5, fontSize:22, bold:true, color:DARK });
 
   const kpis = [
-    { icon:"✨", val:pipeNuevosMes, lbl:"Prospectos
-Nuevos",   color:CYAN },
-    { icon:"🚗", val:visitasMes,    lbl:"Visitas
-Realizadas",  color:"7B61FF" },
-    { icon:"📄", val:cotizMes,      lbl:"Cotizaciones
-Enviadas",color:YEL },
-    { icon:"🎯", val:ganadoMes,     lbl:"Cierres
-Ganados",     color:GRN },
-    { icon:"💰", val:"$"+fmtK(pipeline), lbl:"Pipeline
-Activo",color:MAG },
+    { icon:"+", val:pipeNuevosMes,       lbl:"Prospectos Nuevos",    color:CYAN },
+    { icon:"+", val:visitasMes,          lbl:"Visitas Realizadas",   color:"7B61FF" },
+    { icon:"+", val:cotizMes,            lbl:"Cotizaciones Enviadas",color:YEL },
+    { icon:"+", val:ganadoMes,           lbl:"Cierres Ganados",      color:GRN },
+    { icon:"$", val:"$"+fmtK(pipeline), lbl:"Pipeline Activo",      color:MAG },
   ];
   kpis.forEach((k,i) => {
     const x = 0.3 + i * 2.4;
