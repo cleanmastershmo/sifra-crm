@@ -434,13 +434,35 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .rep-cal-leg-dot { width:9px;height:9px;border-radius:50%;flex-shrink:0 }
 .cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:4px }
 .cal-dow { text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 0 8px }
-.cal-day { min-height:72px;border-radius:6px;padding:5px;background:var(--bg2);border:1px solid var(--border);position:relative;cursor:default }
-.cal-day.empty { background:none;border-color:transparent }
-.cal-day.today { border-color:var(--cyan);background:var(--cyanD) }
-.cal-day.has-activity { background:var(--bg1);border-color:var(--borderD) }
-.cal-day.has-activity:hover { box-shadow:0 2px 8px rgba(0,0,0,.08) }
-.cal-day-num { font-size:11px;font-weight:700;color:var(--t2);margin-bottom:3px }
-.cal-day.today .cal-day-num { color:var(--cyan) }
+.cal-day{min-height:72px;border-radius:6px;padding:5px;background:var(--bg2);border:1px solid var(--border);position:relative;cursor:default;transition:all .15s}
+.cal-day.empty{background:none;border-color:transparent;pointer-events:none}
+.cal-day.today{border-color:var(--cyan);background:var(--cyanD)}
+.cal-day.has-activity{background:var(--bg1);border-color:var(--borderD);cursor:pointer}
+.cal-day.has-activity:hover{box-shadow:0 3px 14px rgba(0,174,239,.18);border-color:var(--cyan);transform:translateY(-1px)}
+.cal-day.has-activity:hover .cal-day-num{color:var(--cyan)}
+.cal-day-num{font-size:11px;font-weight:700;color:var(--t2);margin-bottom:3px;transition:color .15s}
+.cal-day.today .cal-day-num{color:var(--cyan)}
+.cal-day-hint{font-size:8px;color:var(--t3);text-align:right;margin-top:2px;opacity:0;transition:opacity .15s}
+.cal-day.has-activity:hover .cal-day-hint{opacity:1}
+/* ── Day detail panel ── */
+.cal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)}
+.cal-overlay.open{display:flex}
+.cal-modal{background:var(--bg1);border:1px solid var(--border);border-radius:14px;width:100%;max-width:540px;max-height:82vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.2)}
+.cal-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg1);z-index:1}
+.cal-head-date{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px}
+.cal-event{padding:14px 20px;border-bottom:1px solid var(--border)}
+.cal-event:last-child{border-bottom:none}
+.cal-event-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.cal-event-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.cal-event-emp{font-weight:700;font-size:14px;flex:1}
+.cal-event-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.3px}
+.cal-event-who{font-size:12px;color:var(--t2);margin-bottom:5px}
+.cal-event-nota{font-size:13px;line-height:1.55;color:var(--text);background:var(--bg2);border-radius:6px;padding:9px 11px;white-space:pre-wrap;word-break:break-word}
+.cal-event-sig{font-size:12px;color:var(--cyan);margin-top:5px}
+.cal-event-btns{display:flex;gap:6px;margin-top:8px}
+.cal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2)}
+.cal-foot-add{background:var(--cyan);color:#fff;border:none;border-radius:var(--rs);padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s}
+.cal-foot-add:hover{background:#009fd8}
 .cal-dots { display:flex;flex-wrap:wrap;gap:2px;margin-top:2px }
 .cal-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0;cursor:pointer;transition:transform .1s }
 .cal-dot:hover { transform:scale(1.5) }
@@ -455,9 +477,24 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .rep-section-title { font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px }
 .rep-section-title::after { content:'';flex:1;height:1px;background:var(--border) }
 .rep-hot-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px }
-.rep-hot-card { background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh);border-top:3px solid var(--yel) }
+.rep-hot-card { background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:0;box-shadow:var(--sh);border-top:3px solid var(--yel);overflow:hidden }
 .rep-hot-card.ganado { border-top-color:var(--grn) }
 .rep-hot-card.neg { border-top-color:var(--org) }
+.rep-hot-summary { padding:14px 16px;cursor:pointer;user-select:none;transition:background .15s }
+.rep-hot-summary:hover { background:var(--bg2) }
+.rep-hot-toggle { display:flex;align-items:center;justify-content:space-between;margin-bottom:4px }
+.rep-hot-chevron { font-size:11px;color:var(--t3);transition:transform .2s;display:inline-block }
+.rep-hot-card.expanded .rep-hot-chevron { transform:rotate(180deg) }
+.rep-hot-detail { display:none;border-top:1px solid var(--border) }
+.rep-hot-card.expanded .rep-hot-detail { display:block }
+.rep-hot-hist { padding:10px 16px;display:flex;flex-direction:column;gap:0 }
+.rep-hot-hist-item { display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border) }
+.rep-hot-hist-item:last-child { border-bottom:none }
+.rep-hot-hist-dot { width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0 }
+.rep-hot-hist-body { flex:1;min-width:0 }
+.rep-hot-hist-title { font-size:12px;font-weight:600;color:var(--text) }
+.rep-hot-hist-desc { font-size:11px;color:var(--t2);margin-top:2px;white-space:pre-wrap;word-break:break-word }
+.rep-hot-hist-time { font-size:10px;color:var(--t3);margin-top:2px }
 .rep-hot-emp { font-weight:700;font-size:14px }
 .rep-hot-contact { font-size:12px;color:var(--t2);margin-top:2px }
 .rep-hot-etapa { display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--yelD);color:var(--yel);margin:6px 0;text-transform:uppercase }
@@ -745,6 +782,9 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 
 <!-- TOASTS -->
 <div class="toasts" id="toasts"></div>
+<div class="cal-overlay" id="cal-overlay" onclick="if(event.target===this)calClose()">
+  <div class="cal-modal" id="cal-modal"></div>
+</div>
 
 <script>
 // ============================================================
@@ -1396,17 +1436,28 @@ function buildForm(type, d) {
   </div>
   </div>`;
 
-  if (type === "visita") return `<div class="fgrid">
-    <div class="visit-notice">📌 Pre-cargado desde el pipeline. Completa los detalles de la visita.</div>
+  if (type === "visita") {
+    // Build empresa options from pipeline
+    const pipeOpts = [["","— Empresa nueva / manual —"], ...S.pipeline.map(p=>[p.empresa, p.empresa+(p.contacto?" · "+p.contacto:"")])
+      .filter((v,i,a)=>a.findIndex(x=>x[0]===v[0])===i) // deduplicate
+      .sort((a,b)=>a[0].localeCompare(b[0]))];
+    const empSelect = pipeOpts.map(([val,lbl])=>`<option value="${val}" ${val===d.empresa?"selected":""}>${lbl}</option>`).join("");
+    // Auto-fill contacto when empresa changes
+    return `<div class="fgrid">
     <div class="fg"><label class="flabel">Fecha *</label><input class="finput" id="f-fecha" type="date" value="${d.fecha||today()}"></div>
     <div class="fg"><label class="flabel">Vendedor</label><input class="finput" id="f-vendedor" value="${d.vendedor||"Mario"}"></div>
-    <div class="fg"><label class="flabel">Empresa</label><input class="finput" id="f-empresa" value="${d.empresa||""}" placeholder="Nombre"></div>
+    <div class="fg s2">
+      <label class="flabel">Empresa del pipeline *</label>
+      <select class="fselect" id="f-empresa" onchange="visitaAutoFill(this.value)" style="width:100%">${empSelect}</select>
+      <input class="finput" id="f-empresa-manual" placeholder="O escribe empresa nueva..." style="margin-top:6px;display:${d.empresa&&pipeOpts.some(o=>o[0]===d.empresa)?"none":"block"}" value="${!d.empresa||pipeOpts.some(o=>o[0]===d.empresa)?"":d.empresa}">
+    </div>
     <div class="fg"><label class="flabel">Contacto</label><input class="finput" id="f-contacto" value="${d.contacto||""}" placeholder="Nombre"></div>
     <div class="fg"><label class="flabel">Tipo de Visita</label><select class="fselect" id="f-tipo">${["Prospección","Presentación","Cotización","Seguimiento","Cierre"].map(x=>`<option value="${x}" ${x===d.tipoVisita?"selected":""}>${x}</option>`).join("")}</select></div>
     <div class="fg"><label class="flabel">Temperatura</label><select class="fselect" id="f-temp"><option value="Frío" ${(d.temperatura||"Frío")==="Frío"?"selected":""}>❄️ Frío</option><option value="Tibio" ${d.temperatura==="Tibio"?"selected":""}>🌡️ Tibio</option><option value="Caliente" ${d.temperatura==="Caliente"?"selected":""}>🔥 Caliente</option></select></div>
     <div class="fg s2"><label class="flabel">Próxima Acción</label><input class="finput" id="f-prox" value="${d.proximaAccion||""}" placeholder="¿Qué sigue?"></div>
     <div class="fg s2"><label class="flabel">Notas de la Visita</label><textarea class="ftextarea" id="f-notas">${d.notas||""}</textarea></div>
   </div>`;
+  }
 
   if (type === "cliente") return `<div class="fgrid">
     <div class="fg"><label class="flabel">Empresa *</label><input class="finput" id="f-empresa" value="${d.empresa||""}" placeholder="Nombre"></div>
@@ -1445,8 +1496,18 @@ async function saveModal() {
     } else { S._pendingVisita = null; }
   }
   if (type === "visita") {
-    if (!g("f-empresa")) { toast("El nombre de empresa es requerido","error"); return; }
-    data = { fecha:g("f-fecha")||today(), vendedor:g("f-vendedor")||"Mario", empresa:g("f-empresa"), contacto:g("f-contacto"), tipoVisita:g("f-tipo")||"Prospección", temperatura:g("f-temp")||"Frío", proximaAccion:g("f-prox"), notas:g("f-notas") };
+    // empresa: from select or manual field
+    const empSel = (document.getElementById("f-empresa")?.value||"").trim();
+    const empMan = (document.getElementById("f-empresa-manual")?.value||"").trim();
+    const empresaFinal = empSel || empMan;
+    if (!empresaFinal) { toast("Selecciona o escribe la empresa","error"); return; }
+    // Auto-fill contact from pipeline if not set
+    let contactoFinal = g("f-contacto");
+    if (!contactoFinal && empSel) {
+      const pp = S.pipeline.find(x => x.empresa === empSel);
+      contactoFinal = pp?.contacto || "";
+    }
+    data = { fecha:g("f-fecha")||today(), vendedor:g("f-vendedor")||"Mario", empresa:empresaFinal, contacto:contactoFinal, tipoVisita:g("f-tipo")||"Prospección", temperatura:g("f-temp")||"Frío", proximaAccion:g("f-prox"), notas:g("f-notas") };
     coll = "visitas";
   }
   if (type === "cliente") {
@@ -2344,25 +2405,18 @@ function initReporteMeses() {
 }
 
 function rReporte() {
-  // Always refresh from storage
   if (!useFirebase) {
     S.pipeline  = LS.get("pipeline");
     S.visitas   = LS.get("visitas");
     S.historial = LS.get("historial");
   }
 
-  // Populate month selector
+  // ── Month selector ──
   const sel = document.getElementById("rep-month");
   if (sel && sel.options.length === 0) {
     const now = new Date();
-    // Collect all months that have any data
-    const monthsWithData = new Set();
-    S.visitas.forEach(v => { if (v.fecha) monthsWithData.add(v.fecha.substring(0,7)); });
-    S.historial.forEach(h => { if (h.fecha) monthsWithData.add(h.fecha.substring(0,7)); });
-    S.pipeline.forEach(p => { if (p.createdAt) monthsWithData.add((p.createdAt||"").substring(0,7)); });
-    // Always show last 12 months
     for (let i = 0; i < 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const val = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
       const lbl = d.toLocaleDateString("es-MX",{month:"long",year:"numeric"});
       const opt = document.createElement("option");
@@ -2372,55 +2426,63 @@ function rReporte() {
       sel.appendChild(opt);
     }
   }
-
-  const selVal = sel?.value || (new Date().getFullYear() + "-" + String(new Date().getMonth()+1).padStart(2,"0"));
+  const selVal = sel?.value || (new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));
   const [yr, mo] = selVal.split("-").map(Number);
 
   const inMonth = s => {
     if (!s) return false;
-    const d = new Date((s.substring(0,10)) + "T12:00:00");
-    return d.getFullYear() === yr && d.getMonth()+1 === mo;
+    try {
+      const str = typeof s === "string" ? s : s.toString();
+      const d = new Date(str.substring(0,10)+"T12:00:00");
+      return d.getFullYear()===yr && d.getMonth()+1===mo;
+    } catch { return false; }
   };
 
-  // Data for this month
-  const visitasMes   = S.visitas.filter(v => inMonth(v.fecha));
-  const histMes      = S.historial.filter(h => inMonth(h.fecha));
-  const pipeActivos  = S.pipeline.filter(p => !["7-Perdido"].includes(p.etapa));
-  const pipeNuevos   = S.pipeline.filter(p => inMonth(p.createdAt));
-  const pipeCotiz    = S.pipeline.filter(p => p.etapa === "4-Cotización" && inMonth(p.ultimaActividad));
-  const pipeGanado   = S.pipeline.filter(p => p.etapa === "6-Cerrado"   && inMonth(p.ultimaActividad));
-  const pipeTotal    = pipeActivos.reduce((s,p) => s + (p.potencialMensual||0), 0);
-
-  // Title
-  const mesLbl = new Date(yr, mo-1, 1).toLocaleDateString("es-MX",{month:"long",year:"numeric"});
+  const mesLbl = new Date(yr,mo-1,1).toLocaleDateString("es-MX",{month:"long",year:"numeric"});
   const tEl = document.getElementById("rep-titulo");
-  if (tEl) tEl.innerHTML = "Reporte Mensual <em>— " + mesLbl.charAt(0).toUpperCase() + mesLbl.slice(1) + "</em>";
+  if (tEl) tEl.innerHTML = "Reporte Mensual <em>— "+mesLbl.charAt(0).toUpperCase()+mesLbl.slice(1)+"</em>";
 
-  // KPIs
+  // ── Always-on pipeline metrics ──
+  const todos     = S.pipeline;
+  const activos   = todos.filter(p => !["6-Cerrado","7-Perdido"].includes(p.etapa));
+  const cerrados  = todos.filter(p => p.etapa === "6-Cerrado");
+  const calientes = todos.filter(p => ["4-Cotización","5-Negociación","6-Cerrado"].includes(p.etapa));
+  const pipeline  = activos.reduce((s,p) => s+(p.potencialMensual||0), 0);
+  const visitasTotal = S.visitas.length;
+
+  // ── Month-specific ──
+  const visitasMes = S.visitas.filter(v => inMonth(v.fecha));
+  const histMes    = S.historial.filter(h => inMonth(h.fecha));
+  // Use ultimaActividad or fechaProxPaso as proxy for "activity this month"
+  const activosMes = activos.filter(p => inMonth(p.ultimaActividad) || inMonth(p.fechaProxPaso));
+
+  // ── KPIs ──
   const kEl = document.getElementById("rep-kpis");
-  if (kEl) kEl.innerHTML = [
-    { val: pipeNuevos.length, lbl:"Prospectos nuevos",  cls:"c-cyan", icon:"✨" },
-    { val: visitasMes.length, lbl:"Visitas realizadas", cls:"c-pur",  icon:"🚗" },
-    { val: pipeCotiz.length,  lbl:"Cotizaciones",       cls:"c-yel",  icon:"📄" },
-    { val: pipeGanado.length, lbl:"Cierres ganados",    cls:"c-grn",  icon:"🎯" },
-    { val: "$"+fmtK(pipeTotal), lbl:"Pipeline activo",  cls:"c-mag",  icon:"💰" },
-  ].map(k => `<div class="rep-kpi ${k.cls}">
-    <div class="rep-kpi-icon">${k.icon}</div>
-    <div class="rep-kpi-val">${k.val}</div>
-    <div class="rep-kpi-lbl">${k.lbl}</div>
-  </div>`).join("");
+  if (kEl) {
+    const kpis = [
+      { val:activos.length,      lbl:"Prospectos activos",   cls:"c-cyan" },
+      { val:calientes.length,    lbl:"En cotizacion/negoc.", cls:"c-yel"  },
+      { val:cerrados.length,     lbl:"Clientes ganados",     cls:"c-grn"  },
+      { val:visitasTotal,        lbl:"Visitas registradas",  cls:"c-pur"  },
+      { val:"$"+fmtK(pipeline),  lbl:"Pipeline total",       cls:"c-mag"  },
+    ];
+    kEl.innerHTML = kpis.map(k => `<div class="rep-kpi ${k.cls}">
+      <div class="rep-kpi-val">${k.val}</div>
+      <div class="rep-kpi-lbl">${k.lbl}</div>
+    </div>`).join("");
+  }
 
-  // Calendar — ALL visitas of the month with client names
-  rReporteCalendar(yr, mo, visitasMes, histMes);
+  // ── Calendar: pipeline dates + visitas ──
+  rReporteCalendar(yr, mo, S.visitas, S.historial, activos);
 
-  // Hot prospects
-  rReporteHot(pipeActivos);
+  // ── Hot prospects: ALL activos sorted by urgency ──
+  rReporteHot(activos);
 
-  // Activity log
-  rReporteActivity(yr, mo, histMes, visitasMes);
+  // ── Activity: ALL pipeline prospectos (not month-filtered) ──
+  rReporteActivity(yr, mo, S.historial, S.visitas, activos);
 }
 
-function rReporteCalendar(yr, mo, visitasMes, histMes) {
+function rReporteCalendar(yr, mo, allVisitas, allHistorial, allActivos) {
   const cal = document.getElementById("rep-calendar");
   if (!cal) return;
 
@@ -2428,70 +2490,95 @@ function rReporteCalendar(yr, mo, visitasMes, histMes) {
   const daysInMo = new Date(yr, mo, 0).getDate();
   const today    = new Date();
 
-  // Build visit map per day — with client names
-  const dayVisits = {}; // day -> [{empresa, tipo, color}]
+  // Build events per day
+  const dayMap = {}; // day -> [{empresa, tipo, color}]
 
-  const addEvent = (dateStr, empresa, tipo, color) => {
+  const addEv = (dateStr, empresa, tipo, color) => {
     if (!dateStr) return;
-    const d = new Date(dateStr.substring(0,10) + "T12:00:00");
-    if (d.getFullYear() !== yr || d.getMonth()+1 !== mo) return;
-    const day = d.getDate();
-    if (!dayVisits[day]) dayVisits[day] = [];
-    dayVisits[day].push({ empresa: empresa || "—", tipo, color });
+    try {
+      const str = typeof dateStr === "string" ? dateStr : dateStr.toString();
+      const d   = new Date(str.substring(0,10)+"T12:00:00");
+      if (d.getFullYear()!==yr || d.getMonth()+1!==mo) return;
+      const day = d.getDate();
+      if (!dayMap[day]) dayMap[day] = [];
+      // Avoid duplicates
+      if (!dayMap[day].some(e => e.empresa===empresa && e.tipo===tipo)) {
+        dayMap[day].push({empresa: empresa||"—", tipo, color});
+      }
+    } catch {}
   };
 
-  // Registered visits
-  visitasMes.forEach(v => {
-    const tipo = v.tipoVisita || "Visita";
-    const colMap = { "Prospección":"#8A94A6","Presentación":"#7B61FF","Cotización":"#F0B800","Seguimiento":"#00AEEF","Cierre":"#00B37E" };
-    addEvent(v.fecha, v.empresa, tipo, colMap[tipo] || "#8A94A6");
+  // 1. Registered visits
+  const typeColor = {"Prospección":"#8A94A6","Presentación":"#7B61FF","Cotización":"#F0B800","Seguimiento":"#00AEEF","Cierre":"#00B37E"};
+  allVisitas.forEach(v => {
+    addEv(v.fecha, v.empresa, v.tipoVisita||"Visita", typeColor[v.tipoVisita]||"#7B61FF");
   });
 
-  // Pipeline history events
-  histMes.forEach(h => {
-    const tipo = h.tipo === "etapa" ? (ETAPAS.find(e=>e.id===h.etapaNueva)?.label||h.tipo) :
-                 h.tipo === "visita" ? "Visita" :
-                 h.tipo === "nota" ? "Nota" :
-                 h.tipo === "creado" ? "Nuevo prospecto" : h.tipo;
-    const color = dotTypeFromEtapa(h.etapaNueva) === "visita" ? "#7B61FF" :
-                  dotTypeFromEtapa(h.etapaNueva) === "cotiz"  ? "#F0B800" :
-                  dotTypeFromEtapa(h.etapaNueva) === "ganado" ? "#00B37E" :
-                  dotTypeFromEtapa(h.etapaNueva) === "neg"    ? "#F07020" : "#00AEEF";
-    addEvent(h.fecha, h.empresa, tipo, color);
+  // 2. Pipeline: use fechaProxPaso as the "scheduled activity" date
+  allActivos.forEach(p => {
+    if (p.fechaProxPaso) {
+      const etapaColor = {"1-Prospecto":"#8A94A6","2-Contactado":"#00AEEF","3-Reunión":"#7B61FF","4-Cotización":"#F0B800","5-Negociación":"#F07020","6-Cerrado":"#00B37E"};
+      const etapaLabel = {"1-Prospecto":"Prospecto","2-Contactado":"Contacto","3-Reunión":"Reunion","4-Cotización":"Cotizacion","5-Negociación":"Negociacion","6-Cerrado":"Ganado"};
+      addEv(p.fechaProxPaso, p.empresa, etapaLabel[p.etapa]||p.etapa, etapaColor[p.etapa]||"#8A94A6");
+    }
+    // Also use ultimaActividad
+    if (p.ultimaActividad) {
+      addEv(p.ultimaActividad, p.empresa, "Actividad", "#00AEEF");
+    }
+  });
+
+  // 3. Historial events this month
+  allHistorial.forEach(h => {
+    const color = h.tipo==="visita" ? "#7B61FF" : h.tipo==="nota" ? "#EC008C" : h.tipo==="etapa" ? "#00AEEF" : "#8A94A6";
+    addEv(h.fecha, h.empresa, h.tipo, color);
   });
 
   const dows = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
-
   let html = '<div class="cal-grid">';
   dows.forEach(d => { html += `<div class="cal-dow">${d}</div>`; });
   for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
 
   for (let d = 1; d <= daysInMo; d++) {
     const isToday = today.getDate()===d && today.getMonth()+1===mo && today.getFullYear()===yr;
-    const evts = dayVisits[d] || [];
-    const hasActivity = evts.length > 0;
+    const evts    = dayMap[d] || [];
+    const hasAct  = evts.length > 0;
 
-    // Show up to 3 client names, rest as "+N más"
     let evtHtml = "";
-    if (evts.length > 0) {
-      evts.slice(0,3).forEach(e => {
-        evtHtml += `<div style="display:flex;align-items:center;gap:3px;margin-top:2px">
-          <div style="width:6px;height:6px;border-radius:50%;background:${e.color};flex-shrink:0"></div>
-          <div style="font-size:9px;color:#4A5568;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${e.empresa}</div>
-        </div>`;
-      });
-      if (evts.length > 3) {
-        evtHtml += `<div style="font-size:9px;color:#8A94A6;margin-top:1px">+${evts.length-3} más</div>`;
-      }
-    }
+    evts.slice(0,3).forEach(e => {
+      evtHtml += `<div style="display:flex;align-items:center;gap:3px;margin-top:2px;min-width:0">
+        <div style="width:6px;height:6px;border-radius:50%;background:${e.color};flex-shrink:0"></div>
+        <div style="font-size:9px;color:#4A5568;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${e.empresa}</div>
+      </div>`;
+    });
+    if (evts.length > 3) evtHtml += `<div style="font-size:9px;color:#8A94A6;margin-top:1px">+${evts.length-3} mas</div>`;
 
-    html += `<div class="cal-day${isToday?" today":""}${hasActivity?" has-activity":""}">
+    const da = hasAct ? `data-day="${d}" data-yr="${yr}" data-mo="${mo}"` : "";
+    html += `<div class="cal-day${isToday?" today":""}${hasAct?" has-activity":""}" ${da}>
       <div class="cal-day-num">${d}</div>
       ${evtHtml}
+      ${hasAct ? "<div class='cal-day-hint'>ver detalle ▸</div>" : ""}
     </div>`;
   }
   html += "</div>";
+
+  // If no events in this month, show message
+  const totalEvents = Object.keys(dayMap).length;
+  if (totalEvents === 0) {
+    html += `<div style="text-align:center;padding:12px;font-size:12px;color:#8A94A6;margin-top:8px">
+      Sin actividad registrada en este mes. Los dias con seguimientos programados aparecen aqui automaticamente.
+    </div>`;
+  }
   cal.innerHTML = html;
+  // Store full data globally for click handler
+  window._calMap     = dayMap;
+  window._calVisitas = allVisitas;
+  window._calHist    = allHistorial;
+  window._calActivos = allActivos;
+  // Event delegation (more reliable than inline onclick)
+  cal.onclick = ev => {
+    const el = ev.target.closest("[data-day]");
+    if (el) calDayClick(+el.dataset.yr, +el.dataset.mo, +el.dataset.day);
+  };
 }
 
 function dotTypeFromEtapa(etapa) {
@@ -2505,12 +2592,10 @@ function dotTypeFromEtapa(etapa) {
 }
 
 function rReporteHot(activos) {
-  const hot = activos
-    .filter(p => ["3-Reunión","4-Cotización","5-Negociación","6-Cerrado"].includes(p.etapa))
-    .sort((a,b) => {
-      const order = {"6-Cerrado":0,"5-Negociación":1,"4-Cotización":2,"3-Reunión":3};
-      return (order[a.etapa]||9) - (order[b.etapa]||9);
-    });
+  const hot = [...activos].sort((a,b) => {
+    const order = {"6-Cerrado":0,"5-Negociación":1,"4-Cotización":2,"3-Reunión":3,"2-Contactado":4,"1-Prospecto":5};
+    return (order[a.etapa]||9) - (order[b.etapa]||9);
+  });
 
   const grid = document.getElementById("rep-hot");
   if (!grid) return;
@@ -2520,23 +2605,72 @@ function rReporteHot(activos) {
     return;
   }
 
+  const iconMap  = { etapa:"🔄", creado:"✨", editado:"✏️", visita:"🚗", nota:"📝" };
+  const colMap   = { etapa:"var(--cyan)", creado:"var(--grn)", editado:"var(--yel)", visita:"var(--pur)", nota:"var(--mag)" };
+
   grid.innerHTML = hot.map(p => {
-    const etapa = ETAPAS.find(e => e.id === p.etapa);
+    const etapa   = ETAPAS.find(e => e.id === p.etapa);
     const cardCls = p.etapa === "6-Cerrado" ? "ganado" : p.etapa === "5-Negociación" ? "neg" : "";
-    return `<div class="rep-hot-card ${cardCls}">
-      <div class="rep-hot-emp">${p.empresa}</div>
-      <div class="rep-hot-contact">${p.contacto||""}${p.cargo?" · "+p.cargo:""}</div>
-      <div><span class="rep-hot-etapa">${etapa?.label||p.etapa}</span></div>
-      <div class="rep-hot-row"><span class="rep-hot-lbl">Necesidad:</span><span class="rep-hot-val">${p.necesidad||"—"}</span></div>
-      <div class="rep-hot-row"><span class="rep-hot-lbl">Último avance:</span><span class="rep-hot-val">${p.proximoPaso||p.notas?.substring(0,80)||"—"}</span></div>
-      <div class="rep-hot-row"><span class="rep-hot-lbl">Próxima acción:</span><span class="rep-hot-val">${p.proximoPaso||"—"}</span></div>
-      <div class="rep-hot-row"><span class="rep-hot-lbl">Fecha:</span><span class="rep-hot-val">${fmtDate(p.fechaProxPaso)}</span></div>
-      ${p.potencialMensual ? `<div class="rep-hot-monto">💰 $${p.potencialMensual.toLocaleString("es-MX")}/mes</div>` : ""}
+    const topColor = p.etapa === "6-Cerrado" ? "var(--grn)" : p.etapa === "5-Negociación" ? "var(--org)" : "var(--yel)";
+
+    // Historial for this prospect
+    const hist = S.historial.filter(h => h.prospectoId === p.id)
+      .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+    const histHtml = hist.length === 0
+      ? `<div style="padding:12px 16px;font-size:12px;color:var(--t3)">Sin historial registrado aún.</div>`
+      : `<div class="rep-hot-hist">${hist.map(h => {
+          const icon  = iconMap[h.tipo] || "📌";
+          const color = colMap[h.tipo]  || "var(--t3)";
+          let title = "", desc = "";
+          if (h.tipo==="etapa")   { title="Cambio de etapa: "+(ETAPAS.find(e=>e.id===h.etapaAnterior)?.label||"Inicio")+" → "+(ETAPAS.find(e=>e.id===h.etapaNueva)?.label||h.etapaNueva); desc=h.descripcion||""; }
+          else if (h.tipo==="nota")    { title="Nota"; desc=h.descripcion||""; }
+          else if (h.tipo==="visita")  { title="Visita"; desc=h.descripcion||""; }
+          else if (h.tipo==="creado")  { title="Prospecto creado"; desc=""; }
+          else { title=h.tipo; desc=h.descripcion||""; }
+          const dt = new Date(h.fecha).toLocaleString("es-MX",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+          return `<div class="rep-hot-hist-item">
+            <div class="rep-hot-hist-dot" style="background:${color}"></div>
+            <div class="rep-hot-hist-body">
+              <div class="rep-hot-hist-title">${icon} ${title}</div>
+              ${desc?`<div class="rep-hot-hist-desc">${desc}</div>`:""}
+              <div class="rep-hot-hist-time">${dt}</div>
+            </div>
+          </div>`;
+        }).join("")}</div>`;
+
+    // Also add current notes as first entry if not in historial
+    const notaActual = p.notas ? `<div style="padding:10px 16px;background:var(--yelD);border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--yel);margin-bottom:4px">📋 Notas actuales</div>
+      <div style="font-size:12px;line-height:1.5;white-space:pre-wrap;color:var(--text)">${p.notas}</div>
+    </div>` : "";
+
+    return `<div class="rep-hot-card ${cardCls}" id="hot-card-${p.id}">
+      <div class="rep-hot-summary" onclick="toggleHotCard('${p.id}')">
+        <div class="rep-hot-toggle">
+          <div>
+            <div class="rep-hot-emp">${p.empresa}</div>
+            <div class="rep-hot-contact">${p.contacto||""}${p.cargo?" · "+p.cargo:""}</div>
+          </div>
+          <span class="rep-hot-chevron">▼</span>
+        </div>
+        <div style="margin-top:6px"><span class="rep-hot-etapa" style="background:${topColor}22;color:${topColor}">${etapa?.label||p.etapa}</span></div>
+        <div class="rep-hot-row" style="margin-top:6px"><span class="rep-hot-lbl">Próximo paso:</span><span class="rep-hot-val">${p.proximoPaso||"—"}</span></div>
+        <div class="rep-hot-row"><span class="rep-hot-lbl">Fecha:</span><span class="rep-hot-val">${fmtDate(p.fechaProxPaso)}</span></div>
+        ${p.potencialMensual?`<div class="rep-hot-monto">$${p.potencialMensual.toLocaleString("es-MX")}/mes</div>`:""}
+        <div style="font-size:10px;color:var(--t3);margin-top:8px;text-align:right">${hist.length} evento${hist.length!==1?"s":""} en historial · click para expandir</div>
+      </div>
+      <div class="rep-hot-detail">
+        ${notaActual}
+        ${histHtml}
+        <div style="padding:10px 16px;border-top:1px solid var(--border)">
+          <button class="btn btn-secondary btn-sm" onclick="nav('pipeline');setTimeout(()=>editItem('pipeline','${p.id}'),150)">✏️ Editar en Pipeline</button>
+        </div>
+      </div>
     </div>`;
   }).join("");
 }
 
-function rReporteActivity(yr, mo, histMes, visitasMes) {
+function rReporteActivity(yr, mo, histMes, visitasMes, allActivos) {
   const tbody = document.getElementById("rep-act-tbody");
   if (!tbody) return;
 
@@ -2570,10 +2704,24 @@ function rReporteActivity(yr, mo, histMes, visitasMes) {
     acts.push({ fecha:v.fecha, empresa:v.empresa||"—", contacto:v.contacto||"—", accion:`Visita: ${v.tipoVisita||""}`, resultado:v.notas||"—", siguiente:v.proximaAccion||"—" });
   });
 
-  acts.sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+  // Supplement with pipeline proximoPaso if no history
+  if (acts.length === 0 && allActivos && allActivos.length > 0) {
+    allActivos.filter(p => p.proximoPaso).forEach(p => {
+      acts.push({
+        fecha: p.fechaProxPaso || p.ultimaActividad || "",
+        empresa: p.empresa||"—",
+        contacto: p.contacto||"—",
+        accion: "Próximo paso: " + (ETAPAS.find(e=>e.id===p.etapa)?.label||p.etapa),
+        resultado: p.proximoPaso||"—",
+        siguiente: p.proximoPaso||"—"
+      });
+    });
+  }
+
+  acts.sort((a,b) => new Date(b.fecha||0) - new Date(a.fecha||0));
 
   if (!acts.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">Sin actividad registrada este mes</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">Sin actividad registrada</div></div></td></tr>`;
     return;
   }
 
@@ -2744,7 +2892,120 @@ async function exportReportePPT() {
   toast("Presentación exportada ✓","success");
 }
 
-document.addEventListener("keydown", e => { if(e.key === "Escape") closeModal(); });
+
+// ============================================================
+// CALENDAR INTERACTIVE — Day detail
+// ============================================================
+function calDayClick(yr, mo, day) {
+  const evts = (window._calMap || {})[day];
+  if (!evts || !evts.length) return;
+
+  const ds  = yr + "-" + String(mo).padStart(2,"0") + "-" + String(day).padStart(2,"0");
+  const lbl = new Date(ds+"T12:00:00").toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+  const title = lbl.charAt(0).toUpperCase()+lbl.slice(1);
+
+  // Build rich events
+  const items = [];
+  const typeColor = {"Prospección":"#8A94A6","Presentación":"#7B61FF","Cotización":"#F0B800","Seguimiento":"#00AEEF","Cierre":"#00B37E"};
+  const etapaColor = {"1-Prospecto":"#8A94A6","2-Contactado":"#00AEEF","3-Reunión":"#7B61FF","4-Cotización":"#F0B800","5-Negociación":"#F07020","6-Cerrado":"#00B37E"};
+
+  // 1. Registered visits for this day
+  (window._calVisitas||[]).filter(v=>v.fecha&&v.fecha.substring(0,10)===ds).forEach(v=>{
+    items.push({
+      emp:v.empresa||"—", who:(v.contacto||"")+(v.cargo?" · "+v.cargo:""),
+      tipo:v.tipoVisita||"Visita", color:typeColor[v.tipoVisita]||"#7B61FF",
+      nota:v.notas||"Sin notas registradas.", sig:v.proximaAccion||"",
+      src:"visita", id:v.id, pid:null,
+    });
+  });
+  // 2. Pipeline fechaProxPaso
+  (window._calActivos||[]).filter(p=>p.fechaProxPaso&&p.fechaProxPaso.substring(0,10)===ds).forEach(p=>{
+    if (items.some(i=>i.emp===p.empresa&&i.src==="pipeline")) return;
+    const etLbl = ETAPAS.find(e=>e.id===p.etapa)?.label||p.etapa;
+    items.push({
+      emp:p.empresa||"—", who:(p.contacto||"")+(p.cargo?" · "+p.cargo:""),
+      tipo:etLbl, color:etapaColor[p.etapa]||"#8A94A6",
+      nota:p.proximoPaso||"Sin próximo paso definido.",
+      notasExtra:p.notas?(p.notas.substring(0,120)+(p.notas.length>120?"…":"")):"",
+      sig:"", src:"pipeline", id:p.id, pid:p.id,
+    });
+  });
+  // 3. Historial
+  (window._calHist||[]).filter(h=>h.fecha&&h.fecha.substring(0,10)===ds).forEach(h=>{
+    if (items.some(i=>i.emp===h.empresa&&i.nota===h.descripcion)) return;
+    const color = h.tipo==="visita"?"#7B61FF":h.tipo==="nota"?"#EC008C":h.tipo==="etapa"?"#00AEEF":"#8A94A6";
+    const tipoLbl = h.tipo==="etapa"?("→ "+(ETAPAS.find(e=>e.id===h.etapaNueva)?.label||h.etapaNueva)):
+                    h.tipo==="nota"?"Nota":h.tipo==="visita"?"Visita":h.tipo==="creado"?"Creado":h.tipo;
+    items.push({emp:h.empresa||"—",who:"",tipo:tipoLbl,color,nota:h.descripcion||"—",sig:"",src:"hist",id:h.id,pid:h.prospectoId||null});
+  });
+
+  if (!items.length) return;
+
+  const evHtml = items.map(it=>`
+    <div class="cal-event">
+      <div class="cal-event-top">
+        <div class="cal-event-dot" style="background:${it.color}"></div>
+        <div class="cal-event-emp">${it.emp}</div>
+        <div class="cal-event-badge" style="background:${it.color}22;color:${it.color}">${it.tipo}</div>
+      </div>
+      ${it.who?`<div class="cal-event-who">👤 ${it.who}</div>`:""}
+      <div class="cal-event-nota">${it.nota}</div>
+      ${it.notasExtra?`<div style="font-size:11px;color:var(--t3);margin-top:5px;font-style:italic;padding:0 2px">${it.notasExtra}</div>`:""}
+      ${it.sig?`<div class="cal-event-sig">→ ${it.sig}</div>`:""}
+      <div class="cal-event-btns">
+        ${it.pid?`<button class="btn btn-secondary btn-sm" onclick="calGoProspecto('${it.pid}')">✏️ Ver en pipeline</button>`:""}
+        ${it.src==="visita"?`<button class="btn btn-secondary btn-sm" onclick="calGoVisita('${it.id}')">✏️ Editar visita</button>`:""}
+      </div>
+    </div>`).join("");
+
+  document.getElementById("cal-modal").innerHTML = `
+    <div class="cal-head">
+      <div>
+        <div style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:3px">📅 Actividad del día</div>
+        <div class="cal-head-date">${title}</div>
+      </div>
+      <button class="mclose" onclick="calClose()">✕</button>
+    </div>
+    <div>${evHtml}</div>
+    <div class="cal-foot">
+      <span style="font-size:12px;color:var(--t3)">${items.length} evento${items.length>1?"s":""}</span>
+      <button class="cal-foot-add" onclick="calNewVisita('${ds}')">＋ Registrar visita aquí</button>
+    </div>`;
+
+  document.getElementById("cal-overlay").classList.add("open");
+}
+
+function calClose() { document.getElementById("cal-overlay").classList.remove("open"); }
+function calGoProspecto(id) { calClose(); setTimeout(()=>{ nav("pipeline"); setTimeout(()=>editItem("pipeline",id),150); },100); }
+function calGoVisita(id)    { calClose(); setTimeout(()=>{ nav("visitas");  setTimeout(()=>editItem("visita",id),150); },100); }
+function calNewVisita(ds)   { calClose(); setTimeout(()=>openModal("visita",{fecha:ds}),100); }
+
+
+// ============================================================
+// VISITA — Auto-fill from pipeline when empresa selected
+// ============================================================
+function visitaAutoFill(empresa) {
+  const manual = document.getElementById("f-empresa-manual");
+  if (manual) manual.style.display = empresa ? "none" : "block";
+  if (!empresa) return;
+  const p = S.pipeline.find(x => x.empresa === empresa);
+  if (!p) return;
+  const c = document.getElementById("f-contacto");
+  if (c && !c.value) c.value = p.contacto || "";
+  const t = document.getElementById("f-temp");
+  if (t && p.temperatura) t.value = p.temperatura;
+}
+
+// ============================================================
+// REPORT HOT CARDS — Toggle expand/collapse
+// ============================================================
+function toggleHotCard(id) {
+  const card = document.getElementById("hot-card-"+id);
+  if (!card) return;
+  card.classList.toggle("expanded");
+}
+
+document.addEventListener("keydown", e => { if(e.key === "Escape") { closeModal(); calClose(); } });
 </script>
 </body>
 </html>
