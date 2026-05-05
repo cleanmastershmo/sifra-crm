@@ -434,9 +434,11 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .rep-cal-leg-dot { width:9px;height:9px;border-radius:50%;flex-shrink:0 }
 .cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:4px }
 .cal-dow { text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 0 8px }
-.cal-day { min-height:58px;border-radius:6px;padding:5px;background:var(--bg2);border:1px solid var(--border);position:relative;cursor:default }
+.cal-day { min-height:72px;border-radius:6px;padding:5px;background:var(--bg2);border:1px solid var(--border);position:relative;cursor:default }
 .cal-day.empty { background:none;border-color:transparent }
 .cal-day.today { border-color:var(--cyan);background:var(--cyanD) }
+.cal-day.has-activity { background:var(--bg1);border-color:var(--borderD) }
+.cal-day.has-activity:hover { box-shadow:0 2px 8px rgba(0,0,0,.08) }
 .cal-day-num { font-size:11px;font-weight:700;color:var(--t2);margin-bottom:3px }
 .cal-day.today .cal-day-num { color:var(--cyan) }
 .cal-dots { display:flex;flex-wrap:wrap;gap:2px;margin-top:2px }
@@ -787,18 +789,32 @@ const LS = {
 };
 
 async function dbAdd(c, d) {
-  if (useFirebase) { const r = await db.collection(c).add({...d, createdAt: firebase.firestore.FieldValue.serverTimestamp()}); return r.id; }
-  const rec = LS.add(c, d);
-  lsSync(c); // keep S in sync
-  return rec.id;
+  if (useFirebase) {
+    const r = await db.collection(c).add({...d, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
+    await fbRefresh(c); return r.id;
+  }
+  const rec = LS.add(c, d); lsSync(c); return rec.id;
 }
 async function dbUpd(c, id, d) {
-  if (useFirebase) await db.collection(c).doc(id).update(d);
+  if (useFirebase) { await db.collection(c).doc(id).update(d); await fbRefresh(c); }
   else { LS.upd(c, id, d); lsSync(c); }
 }
 async function dbDel(c, id) {
-  if (useFirebase) await db.collection(c).doc(id).delete();
+  if (useFirebase) { await db.collection(c).doc(id).delete(); await fbRefresh(c); }
   else { LS.del(c, id); lsSync(c); }
+}
+
+async function fbRefresh(c) {
+  if (!useFirebase) return;
+  try {
+    const snap = await db.collection(c).get();
+    const arr = snap.docs.map(d => {
+      const data = d.data();
+      if (data.createdAt && data.createdAt.toDate) data.createdAt = data.createdAt.toDate().toISOString();
+      return { id:d.id, ...data };
+    }).sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+    S[c] = arr;
+  } catch(e) {}
 }
 function lsSync(c) {
   if (c === "pipeline")  S.pipeline  = LS.get("pipeline");
@@ -1585,8 +1601,14 @@ function toast(msg, type="info") {
 // ============================================================
 async function init() {
   initStorage();
+  if (useFirebase) {
+    const loader = document.getElementById("app-loader");
+    if (loader) loader.style.display = "flex";
+  }
   try { await seedIfEmpty(); } catch(e) { console.error("Seed error:", e); }
-  initListeners();
+  await initListeners();
+  const loader2 = document.getElementById("app-loader");
+  if (loader2) loader2.style.display = "none";
 }
 init().catch(e => { console.error(e); toast("Error de inicio","error"); });
 
@@ -2322,108 +2344,150 @@ function initReporteMeses() {
 }
 
 function rReporte() {
+  // Always refresh from storage
   if (!useFirebase) {
     S.pipeline  = LS.get("pipeline");
     S.visitas   = LS.get("visitas");
     S.historial = LS.get("historial");
   }
-  initReporteMeses();
 
-  const selVal = document.getElementById("rep-month")?.value || "";
-  const [yr, mo] = selVal ? selVal.split("-").map(Number) : [new Date().getFullYear(), new Date().getMonth()+1];
+  // Populate month selector
+  const sel = document.getElementById("rep-month");
+  if (sel && sel.options.length === 0) {
+    const now = new Date();
+    // Collect all months that have any data
+    const monthsWithData = new Set();
+    S.visitas.forEach(v => { if (v.fecha) monthsWithData.add(v.fecha.substring(0,7)); });
+    S.historial.forEach(h => { if (h.fecha) monthsWithData.add(h.fecha.substring(0,7)); });
+    S.pipeline.forEach(p => { if (p.createdAt) monthsWithData.add((p.createdAt||"").substring(0,7)); });
+    // Always show last 12 months
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const val = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+      const lbl = d.toLocaleDateString("es-MX",{month:"long",year:"numeric"});
+      const opt = document.createElement("option");
+      opt.value = val;
+      opt.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+      if (i === 0) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
 
-  // Date helpers
-  const inMonth = dateStr => {
-    if (!dateStr) return false;
-    const d = new Date(dateStr.substring(0,10) + "T00:00:00");
-    return d.getFullYear() === yr && (d.getMonth()+1) === mo;
+  const selVal = sel?.value || (new Date().getFullYear() + "-" + String(new Date().getMonth()+1).padStart(2,"0"));
+  const [yr, mo] = selVal.split("-").map(Number);
+
+  const inMonth = s => {
+    if (!s) return false;
+    const d = new Date((s.substring(0,10)) + "T12:00:00");
+    return d.getFullYear() === yr && d.getMonth()+1 === mo;
   };
 
-  // ── Collect month activities ──
-  // From historial (movements this month)
-  const histMes  = S.historial.filter(h => inMonth(h.fecha));
-  // From visitas this month
-  const visitasMes = S.visitas.filter(v => inMonth(v.fecha));
-  // From pipeline: prospects updated this month
-  const pipeActivos = S.pipeline.filter(p => !["7-Perdido"].includes(p.etapa));
-  const pipeNuevosMes = S.pipeline.filter(p => inMonth(p.createdAt));
-  const pipeCotizMes  = S.pipeline.filter(p => p.etapa === "4-Cotización" && inMonth(p.ultimaActividad));
-  const pipeGanadoMes = S.pipeline.filter(p => p.etapa === "6-Cerrado" && inMonth(p.ultimaActividad));
-  const pipePipeline  = S.pipeline.filter(p => !["6-Cerrado","7-Perdido"].includes(p.etapa)).reduce((s,p)=>s+(p.potencialMensual||0),0);
+  // Data for this month
+  const visitasMes   = S.visitas.filter(v => inMonth(v.fecha));
+  const histMes      = S.historial.filter(h => inMonth(h.fecha));
+  const pipeActivos  = S.pipeline.filter(p => !["7-Perdido"].includes(p.etapa));
+  const pipeNuevos   = S.pipeline.filter(p => inMonth(p.createdAt));
+  const pipeCotiz    = S.pipeline.filter(p => p.etapa === "4-Cotización" && inMonth(p.ultimaActividad));
+  const pipeGanado   = S.pipeline.filter(p => p.etapa === "6-Cerrado"   && inMonth(p.ultimaActividad));
+  const pipeTotal    = pipeActivos.reduce((s,p) => s + (p.potencialMensual||0), 0);
 
-  // ── Update title ──
-  const mesLbl = new Date(yr, mo-1, 1).toLocaleDateString("es-MX", { month:"long", year:"numeric" });
-  const titulo = document.getElementById("rep-titulo");
-  if (titulo) titulo.innerHTML = `Reporte Mensual <em>— ${mesLbl.charAt(0).toUpperCase()+mesLbl.slice(1)}</em>`;
+  // Title
+  const mesLbl = new Date(yr, mo-1, 1).toLocaleDateString("es-MX",{month:"long",year:"numeric"});
+  const tEl = document.getElementById("rep-titulo");
+  if (tEl) tEl.innerHTML = "Reporte Mensual <em>— " + mesLbl.charAt(0).toUpperCase() + mesLbl.slice(1) + "</em>";
 
-  // ── KPIs ──
-  const kpisEl = document.getElementById("rep-kpis");
-  if (kpisEl) kpisEl.innerHTML = [
-    { icon:"✨", val: pipeNuevosMes.length,  lbl:"Prospectos nuevos",  cls:"c-cyan" },
-    { icon:"🚗", val: visitasMes.length,     lbl:"Visitas realizadas", cls:"c-pur"  },
-    { icon:"📄", val: pipeCotizMes.length,   lbl:"Cotizaciones",       cls:"c-yel"  },
-    { icon:"🎯", val: pipeGanadoMes.length,  lbl:"Cierres ganados",    cls:"c-grn"  },
-    { icon:"💰", val: "$"+fmtK(pipePipeline),lbl:"Pipeline activo",    cls:"c-mag"  },
+  // KPIs
+  const kEl = document.getElementById("rep-kpis");
+  if (kEl) kEl.innerHTML = [
+    { val: pipeNuevos.length, lbl:"Prospectos nuevos",  cls:"c-cyan", icon:"✨" },
+    { val: visitasMes.length, lbl:"Visitas realizadas", cls:"c-pur",  icon:"🚗" },
+    { val: pipeCotiz.length,  lbl:"Cotizaciones",       cls:"c-yel",  icon:"📄" },
+    { val: pipeGanado.length, lbl:"Cierres ganados",    cls:"c-grn",  icon:"🎯" },
+    { val: "$"+fmtK(pipeTotal), lbl:"Pipeline activo",  cls:"c-mag",  icon:"💰" },
   ].map(k => `<div class="rep-kpi ${k.cls}">
     <div class="rep-kpi-icon">${k.icon}</div>
     <div class="rep-kpi-val">${k.val}</div>
     <div class="rep-kpi-lbl">${k.lbl}</div>
   </div>`).join("");
 
-  // ── Calendar ──
-  rReporteCalendar(yr, mo, histMes, visitasMes);
+  // Calendar — ALL visitas of the month with client names
+  rReporteCalendar(yr, mo, visitasMes, histMes);
 
-  // ── Hot prospects cards ──
+  // Hot prospects
   rReporteHot(pipeActivos);
 
-  // ── Activity log ──
+  // Activity log
   rReporteActivity(yr, mo, histMes, visitasMes);
 }
 
-function rReporteCalendar(yr, mo, histMes, visitasMes) {
+function rReporteCalendar(yr, mo, visitasMes, histMes) {
   const cal = document.getElementById("rep-calendar");
   if (!cal) return;
 
-  const firstDay = new Date(yr, mo-1, 1).getDay(); // 0=Sun
+  const firstDay = new Date(yr, mo-1, 1).getDay();
   const daysInMo = new Date(yr, mo, 0).getDate();
   const today    = new Date();
 
-  // Build events per day
-  const dayEvents = {};
-  const addDot = (dateStr, type) => {
+  // Build visit map per day — with client names
+  const dayVisits = {}; // day -> [{empresa, tipo, color}]
+
+  const addEvent = (dateStr, empresa, tipo, color) => {
     if (!dateStr) return;
-    const d = new Date(dateStr.substring(0,10)+"T00:00:00");
-    if (d.getFullYear()===yr && (d.getMonth()+1)===mo) {
-      const day = d.getDate();
-      if (!dayEvents[day]) dayEvents[day] = [];
-      dayEvents[day].push(type);
-    }
+    const d = new Date(dateStr.substring(0,10) + "T12:00:00");
+    if (d.getFullYear() !== yr || d.getMonth()+1 !== mo) return;
+    const day = d.getDate();
+    if (!dayVisits[day]) dayVisits[day] = [];
+    dayVisits[day].push({ empresa: empresa || "—", tipo, color });
   };
 
-  histMes.forEach(h => {
-    const t = h.tipo==="etapa" ? dotTypeFromEtapa(h.etapaNueva) :
-              h.tipo==="visita" ? "visita" :
-              h.tipo==="creado" ? "prosp" : "seg";
-    addDot(h.fecha, t);
+  // Registered visits
+  visitasMes.forEach(v => {
+    const tipo = v.tipoVisita || "Visita";
+    const colMap = { "Prospección":"#8A94A6","Presentación":"#7B61FF","Cotización":"#F0B800","Seguimiento":"#00AEEF","Cierre":"#00B37E" };
+    addEvent(v.fecha, v.empresa, tipo, colMap[tipo] || "#8A94A6");
   });
-  visitasMes.forEach(v => addDot(v.fecha, "visita"));
 
-  const dotClass = { prosp:"cal-dot-prosp", visita:"cal-dot-visita", cotiz:"cal-dot-cotiz", seg:"cal-dot-seg", neg:"cal-dot-neg", ganado:"cal-dot-ganado" };
+  // Pipeline history events
+  histMes.forEach(h => {
+    const tipo = h.tipo === "etapa" ? (ETAPAS.find(e=>e.id===h.etapaNueva)?.label||h.tipo) :
+                 h.tipo === "visita" ? "Visita" :
+                 h.tipo === "nota" ? "Nota" :
+                 h.tipo === "creado" ? "Nuevo prospecto" : h.tipo;
+    const color = dotTypeFromEtapa(h.etapaNueva) === "visita" ? "#7B61FF" :
+                  dotTypeFromEtapa(h.etapaNueva) === "cotiz"  ? "#F0B800" :
+                  dotTypeFromEtapa(h.etapaNueva) === "ganado" ? "#00B37E" :
+                  dotTypeFromEtapa(h.etapaNueva) === "neg"    ? "#F07020" : "#00AEEF";
+    addEvent(h.fecha, h.empresa, tipo, color);
+  });
+
   const dows = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
   let html = '<div class="cal-grid">';
-  // Day of week headers
   dows.forEach(d => { html += `<div class="cal-dow">${d}</div>`; });
-  // Empty cells before first day
   for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
-  // Days
+
   for (let d = 1; d <= daysInMo; d++) {
     const isToday = today.getDate()===d && today.getMonth()+1===mo && today.getFullYear()===yr;
-    const evts = dayEvents[d] || [];
-    const dots = evts.slice(0,6).map(t => `<div class="cal-dot ${dotClass[t]||'cal-dot-seg'}" title="${t}"></div>`).join("");
-    html += `<div class="cal-day${isToday?" today":""}">
+    const evts = dayVisits[d] || [];
+    const hasActivity = evts.length > 0;
+
+    // Show up to 3 client names, rest as "+N más"
+    let evtHtml = "";
+    if (evts.length > 0) {
+      evts.slice(0,3).forEach(e => {
+        evtHtml += `<div style="display:flex;align-items:center;gap:3px;margin-top:2px">
+          <div style="width:6px;height:6px;border-radius:50%;background:${e.color};flex-shrink:0"></div>
+          <div style="font-size:9px;color:#4A5568;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${e.empresa}</div>
+        </div>`;
+      });
+      if (evts.length > 3) {
+        evtHtml += `<div style="font-size:9px;color:#8A94A6;margin-top:1px">+${evts.length-3} más</div>`;
+      }
+    }
+
+    html += `<div class="cal-day${isToday?" today":""}${hasActivity?" has-activity":""}">
       <div class="cal-day-num">${d}</div>
-      <div class="cal-dots">${dots}</div>
+      ${evtHtml}
     </div>`;
   }
   html += "</div>";
