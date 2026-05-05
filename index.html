@@ -975,7 +975,10 @@ function initListeners() {
   if (useFirebase) {
     dbSub("pipeline", d => { S.pipeline = d; refreshAll(); });
     dbSub("visitas",  d => {
-      S.visitas = d;
+      const clean = d.filter(v => v.empresa && v.empresa !== "undefined");
+      d.filter(v => !v.empresa || v.empresa === "undefined")
+       .forEach(v => { try { db.collection("visitas").doc(v.id).delete(); } catch(e){} });
+      S.visitas = clean;
       if (window._blockReporteRefresh) return;
       refreshAll();
     });
@@ -1308,6 +1311,7 @@ function rVisitas() {
   const tipo = document.getElementById("vs-tipo")?.value||"";
 
   const filtered = S.visitas
+    .filter(v => v.empresa && v.empresa !== "undefined")
     .filter(v => (!q || (v.empresa||"").toLowerCase().includes(q)))
     .filter(v => !tipo || v.tipoVisita === tipo);
 
@@ -3133,7 +3137,7 @@ function rRepVisitas(yr,mo,inMonth){
     seen.add(key); return true;
   });
 
-  const v = allVis.filter(x=>inMonth(x.fecha)).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+    const v = allVis.filter(x => x.empresa && x.empresa !== "undefined" && inMonth(x.fecha)).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
   const u = [...new Set(v.map(x=>x.empresa))];
   const contactosObtenidos = v.filter(x=>x.contactoObtenido==="si"||x.contactoObtenido==="ref").length;
 
