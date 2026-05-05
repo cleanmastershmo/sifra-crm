@@ -546,6 +546,9 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .rep-visit-ctag.si {background:var(--grnD);color:var(--grn)}
 .rep-visit-ctag.ref{background:var(--cyanD);color:var(--cyan)}
 .rep-visit-ctag.no {background:var(--bg3);color:var(--t3)}
+.rep-visit-ctag-sel{transition:background .2s,color .2s}
+.rep-visit-ctag-sel:hover{filter:brightness(.92)}
+.rep-visit-ctag-sel option{background:var(--bg1);color:var(--text);font-weight:600}
 .rep-visit-del{width:26px;height:26px;border-radius:5px;border:none;background:var(--redD);color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
 .rep-visit-del:hover{background:var(--red);color:#fff}
 .rep-seg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;padding:16px}
@@ -3130,10 +3133,20 @@ function rRepVisitas(yr,mo,inMonth){
   const u = [...new Set(v.map(x=>x.empresa))];
   const contactosObtenidos = v.filter(x=>x.contactoObtenido==="si"||x.contactoObtenido==="ref").length;
 
-  const ctTag = co => {
-    if (co==="si")  return `<div class="rep-visit-ctag si">✓ Contacto obtenido</div>`;
-    if (co==="ref") return `<div class="rep-visit-ctag ref">↗ Referido</div>`;
-    return `<div class="rep-visit-ctag no">✗ Sin contacto directo</div>`;
+  // Inline editable contacto badge
+  const ctTag = (co, visitaId) => {
+    const opts = [
+      {val:"no",  label:"✗ Sin contacto",    cls:"no"},
+      {val:"si",  label:"✓ Contacto obtenido", cls:"si"},
+      {val:"ref", label:"↗ Referido",          cls:"ref"},
+    ];
+    const cur = opts.find(o=>o.val===(co||"no")) || opts[0];
+    const optionsHtml = opts.map(o=>`<option value="${o.val}" ${o.val===cur.val?"selected":""}>${o.label}</option>`).join("");
+    return `<select class="rep-visit-ctag-sel rep-visit-ctag ${cur.cls}" 
+      onchange="updateContactoObtenido('${visitaId}',this.value,this)" 
+      title="Cambiar resultado de contacto"
+      style="cursor:pointer;appearance:none;-webkit-appearance:none;border:none;outline:none;font-family:inherit;font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px"
+    >${optionsHtml}</select>`;
   };
 
   const body = v.length===0
@@ -3153,7 +3166,7 @@ function rRepVisitas(yr,mo,inMonth){
           <div class="rep-visit-nota">${x.notas||"<em style='color:var(--t3)'>Sin notas.</em>"}</div>
           ${x.proximaAccion?`<div class="rep-visit-sig">→ ${x.proximaAccion}</div>`:""}
           <div class="rep-visit-foot">
-            ${ctTag(x.contactoObtenido)}
+            ${ctTag(x.contactoObtenido, x.id)}
             <div style="display:flex;gap:6px;align-items:center">
               <div class="rep-visit-date">📅 ${fmtDate(x.fecha)}</div>
               <button class="rep-visit-del" onclick="deleteVisitaRep('${x.id}')" title="Eliminar visita">✕</button>
@@ -3216,6 +3229,32 @@ async function deleteVisitaRep(id) {
     rRepVisitas(yr,mo,inMonth);
   }, 400);
 }
+
+// Inline update contactoObtenido from report card
+async function updateContactoObtenido(id, value, selectEl) {
+  await dbUpd("visitas", id, { contactoObtenido: value });
+  // Update select color class immediately
+  const clsMap = { si:"si", ref:"ref", no:"no" };
+  selectEl.className = "rep-visit-ctag-sel rep-visit-ctag " + (clsMap[value]||"no");
+  // Update S.visitas in memory
+  const v = S.visitas.find(x=>x.id===id);
+  if (v) v.contactoObtenido = value;
+  // Refresh counter in header (re-render block header only)
+  const sel = document.getElementById("rep-month");
+  const selVal = sel?.value||(new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));
+  const [yr,mo] = selVal.split("-").map(Number);
+  const inMonth = s=>{ if(!s) return false; try{const d=new Date(String(s).substring(0,10)+"T12:00:00"); return d.getFullYear()===yr&&d.getMonth()+1===mo;}catch{return false;} };
+  // Only refresh the header count, not the full block (avoids resetting selects)
+  const seen=new Set();
+  const v2 = S.visitas.filter(x=>{ const k=x.id||(x.empresa+x.fecha); if(seen.has(k)) return false; seen.add(k); return true; }).filter(x=>inMonth(x.fecha));
+  const co = v2.filter(x=>x.contactoObtenido==="si"||x.contactoObtenido==="ref").length;
+  const cnt1 = document.querySelector("#rep-visitas-mes .rep-block-count:nth-child(1)");
+  // Update both counters via querySelectorAll
+  const counts = document.querySelectorAll("#rep-visitas-mes .rep-block-count");
+  if (counts[1]) counts[1].textContent = co;
+  toast(value==="si"?"✓ Contacto marcado":value==="ref"?"↗ Referido marcado":"Actualizado","success");
+}
+
 document.addEventListener("keydown", e => { if(e.key === "Escape") { closeModal(); calClose(); } });
 </script>
 </body>
