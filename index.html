@@ -238,7 +238,6 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* ── CONFIG BANNER ── */
-.cfg-banner{background:#FFF9F0;border:1px solid rgba(240,184,0,.4);border-radius:var(--rs);padding:11px 16px;margin-bottom:18px;font-size:13px;color:var(--yel);display:none;align-items:center;gap:8px}
 .cfg-banner.show{display:flex}
 .cfg-banner a{color:var(--org);font-weight:700;cursor:pointer;text-decoration:underline}
 
@@ -521,6 +520,33 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 }
 @media(max-width:1100px){ .rep-kpis{grid-template-columns:repeat(3,1fr)} .rep-hot-grid{grid-template-columns:1fr 1fr} }
 @media(max-width:700px) { .rep-kpis{grid-template-columns:1fr 1fr} .rep-hot-grid{grid-template-columns:1fr} }
+
+/* ── REP BLOCKS ── */
+.rep-block{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:16px}
+.rep-block-head{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--bg2)}
+.rep-block-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px}
+.rep-block-count{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:800}
+.rep-chips{display:flex;flex-wrap:wrap;gap:10px;padding:16px}
+.rep-chip{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px 14px;min-width:150px;max-width:210px;border-left:4px solid var(--cyan);transition:all .15s}
+.rep-chip:hover{box-shadow:var(--shH);transform:translateY(-1px)}
+.rep-chip-emp{font-weight:700;font-size:13px}
+.rep-chip-etapa{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-top:5px;display:inline-block}
+.rep-visit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:16px}
+.rep-visit-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;border-top:3px solid var(--pur)}
+.rep-visit-card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px}
+.rep-visit-emp{font-weight:700;font-size:14px}
+.rep-visit-who{font-size:11px;color:var(--t2);margin-top:2px}
+.rep-visit-city{font-size:11px;color:var(--t3);margin-top:1px}
+.rep-visit-tipo{font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0}
+.rep-visit-nota{font-size:13px;color:var(--text);line-height:1.55;margin-top:8px;background:var(--bg1);border-radius:6px;padding:9px 11px;border-left:3px solid var(--pur)}
+.rep-visit-sig{font-size:11px;color:var(--cyan);margin-top:6px}
+.rep-visit-date{font-size:10px;color:var(--t3);margin-top:4px}
+.rep-seg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;padding:16px}
+.rep-seg-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;gap:10px}
+.rep-seg-pill{font-family:monospace;font-size:11px;font-weight:700;padding:4px 8px;border-radius:5px;text-align:center;flex-shrink:0;min-width:54px;align-self:flex-start;margin-top:2px}
+.rep-seg-emp{font-weight:700;font-size:13px}
+.rep-seg-paso{font-size:12px;color:var(--t2);margin-top:3px;line-height:1.4}
+.rep-seg-meta{font-size:11px;color:var(--t3);margin-top:3px}
 </style>
 </head>
 <body>
@@ -549,9 +575,6 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 <div class="main">
 
 <!-- CONFIG BANNER -->
-<div class="cfg-banner" id="cfg-banner">
-  ☁️ <strong>Modo local</strong> — tus datos se guardan en este navegador y en este archivo. Guárdalo siempre en la misma carpeta con el mismo nombre para no perderlos. Para acceder desde cualquier dispositivo: <a onclick="showFirebaseHelp()">Activar nube Firebase →</a>
-</div>
 
 <!-- ══ DASHBOARD ══ -->
 <div class="view active" id="view-dashboard">
@@ -725,52 +748,29 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
   <div class="rep-top">
     <div>
       <div class="page-title" id="rep-titulo">Reporte Mensual <em>— Actividad Comercial</em></div>
-      <div style="font-size:12px;color:var(--t3);margin-top:3px" id="rep-subtitulo">Grupo Sifra · Mario Rivera · Gerente Comercial</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:3px">Grupo Sifra · Mario Rivera · Gerente Comercial</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div class="rep-controls">
-        <select class="rep-month-sel" id="rep-month" onchange="rReporte()"></select>
-      </div>
-      <div class="rep-actions">
-        <button class="btn btn-secondary btn-sm" onclick="window.print()" title="Imprime o guarda como PDF desde el diálogo del navegador">🖨️ PDF / Imprimir</button>
-        <button class="btn btn-primary btn-sm" onclick="exportReportePPT()">📊 Exportar PPT</button>
-      </div>
+      <select class="rep-month-sel" id="rep-month" onchange="rReporte()"></select>
+      <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ PDF</button>
+      <button class="btn btn-primary btn-sm" onclick="exportReportePPT()">📊 PPT</button>
     </div>
   </div>
-
-  <!-- KPIs -->
-  <div class="rep-kpis" id="rep-kpis"></div>
-
-  <!-- Calendario -->
-  <div class="rep-calendar">
-    <div class="rep-cal-title">
-      <span>📅 Calendario de Actividad</span>
-      <div class="rep-cal-legend">
+  <div class="rep-block" id="rep-nuevos"></div>
+  <div class="rep-block" id="rep-visitas-mes"></div>
+  <div class="rep-block" id="rep-seguimientos"></div>
+  <div style="margin-top:20px">
+    <div class="rep-calendar">
+      <div class="rep-cal-title"><div class="rep-cal-legend">
         <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-prosp"></div>Prospección</div>
         <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-visita"></div>Visita</div>
         <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-cotiz"></div>Cotización</div>
         <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-seg"></div>Seguimiento</div>
         <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-neg"></div>Negociación</div>
         <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-ganado"></div>Ganado</div>
-      </div>
+      </div></div>
+      <div id="rep-calendar"></div>
     </div>
-    <div id="rep-calendar"></div>
-  </div>
-
-  <!-- Hot Prospects -->
-  <div class="rep-section-title">🔥 Prospectos Activos — Detalle</div>
-  <div class="rep-hot-grid" id="rep-hot"></div>
-
-  <!-- Activity log -->
-  <div class="rep-section-title">📋 Registro de Actividad del Mes</div>
-  <div class="rep-act-table">
-    <table>
-      <thead><tr>
-        <th>Fecha</th><th>Empresa</th><th>Contacto</th>
-        <th>Actividad</th><th>Resultado / Notas</th><th>Siguiente Paso</th>
-      </tr></thead>
-      <tbody id="rep-act-tbody"></tbody>
-    </table>
   </div>
 </div>
 </div><!-- /main -->
@@ -816,7 +816,6 @@ function initStorage() {
       useFirebase = true;
     } catch(e) { useFirebase = false; }
   }
-  if (!useFirebase) document.getElementById("cfg-banner").classList.add("show");
 }
 
 const LS = {
@@ -836,8 +835,18 @@ async function dbAdd(c, d) {
   const rec = LS.add(c, d); lsSync(c); return rec.id;
 }
 async function dbUpd(c, id, d) {
-  if (useFirebase) { await db.collection(c).doc(id).update(d); await fbRefresh(c); }
-  else { LS.upd(c, id, d); lsSync(c); }
+  if (useFirebase) {
+    try {
+      await db.collection(c).doc(id).update(d);
+    } catch(e) {
+      if (e.code === "not-found") {
+        // Doc doesn't exist in Firestore (was created in localStorage before Firebase was set up)
+        // Use set() with merge to create it
+        await db.collection(c).doc(id).set({...d, createdAt: firebase.firestore.FieldValue.serverTimestamp()}, { merge: true });
+      } else { throw e; }
+    }
+    await fbRefresh(c);
+  } else { LS.upd(c, id, d); lsSync(c); }
 }
 async function dbDel(c, id) {
   if (useFirebase) { await db.collection(c).doc(id).delete(); await fbRefresh(c); }
@@ -2405,81 +2414,31 @@ function initReporteMeses() {
 }
 
 function rReporte() {
-  if (!useFirebase) {
-    S.pipeline  = LS.get("pipeline");
-    S.visitas   = LS.get("visitas");
-    S.historial = LS.get("historial");
-  }
-
-  // ── Month selector ──
+  if (!useFirebase) { S.pipeline=LS.get("pipeline"); S.visitas=LS.get("visitas"); S.historial=LS.get("historial"); }
   const sel = document.getElementById("rep-month");
-  if (sel && sel.options.length === 0) {
-    const now = new Date();
-    for (let i = 0; i < 12; i++) {
-      const d   = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const val = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
-      const lbl = d.toLocaleDateString("es-MX",{month:"long",year:"numeric"});
-      const opt = document.createElement("option");
-      opt.value = val;
-      opt.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
-      if (i === 0) opt.selected = true;
+  if (sel && sel.options.length===0) {
+    const now=new Date();
+    for(let i=0;i<12;i++){
+      const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+      const val=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+      const lbl=d.toLocaleDateString("es-MX",{month:"long",year:"numeric"});
+      const opt=document.createElement("option");
+      opt.value=val; opt.textContent=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+      if(i===0) opt.selected=true;
       sel.appendChild(opt);
     }
   }
-  const selVal = sel?.value || (new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));
-  const [yr, mo] = selVal.split("-").map(Number);
-
-  const inMonth = s => {
-    if (!s) return false;
-    try {
-      const str = typeof s === "string" ? s : s.toString();
-      const d = new Date(str.substring(0,10)+"T12:00:00");
-      return d.getFullYear()===yr && d.getMonth()+1===mo;
-    } catch { return false; }
-  };
-
-  const mesLbl = new Date(yr,mo-1,1).toLocaleDateString("es-MX",{month:"long",year:"numeric"});
-  const tEl = document.getElementById("rep-titulo");
-  if (tEl) tEl.innerHTML = "Reporte Mensual <em>— "+mesLbl.charAt(0).toUpperCase()+mesLbl.slice(1)+"</em>";
-
-  // ── Always-on pipeline metrics ──
-  const todos     = S.pipeline;
-  const activos   = todos.filter(p => !["6-Cerrado","7-Perdido"].includes(p.etapa));
-  const cerrados  = todos.filter(p => p.etapa === "6-Cerrado");
-  const calientes = todos.filter(p => ["4-Cotización","5-Negociación","6-Cerrado"].includes(p.etapa));
-  const pipeline  = activos.reduce((s,p) => s+(p.potencialMensual||0), 0);
-  const visitasTotal = S.visitas.length;
-
-  // ── Month-specific ──
-  const visitasMes = S.visitas.filter(v => inMonth(v.fecha));
-  const histMes    = S.historial.filter(h => inMonth(h.fecha));
-  // Use ultimaActividad or fechaProxPaso as proxy for "activity this month"
-  const activosMes = activos.filter(p => inMonth(p.ultimaActividad) || inMonth(p.fechaProxPaso));
-
-  // ── KPIs ──
-  const kEl = document.getElementById("rep-kpis");
-  if (kEl) {
-    const kpis = [
-      { val:activos.length,      lbl:"Prospectos activos",   cls:"c-cyan" },
-      { val:calientes.length,    lbl:"En cotizacion/negoc.", cls:"c-yel"  },
-      { val:cerrados.length,     lbl:"Clientes ganados",     cls:"c-grn"  },
-      { val:visitasTotal,        lbl:"Visitas registradas",  cls:"c-pur"  },
-      { val:"$"+fmtK(pipeline),  lbl:"Pipeline total",       cls:"c-mag"  },
-    ];
-    kEl.innerHTML = kpis.map(k => `<div class="rep-kpi ${k.cls}">
-      <div class="rep-kpi-val">${k.val}</div>
-      <div class="rep-kpi-lbl">${k.lbl}</div>
-    </div>`).join("");
-  }
-
-  // ── Calendar: pipeline dates + visitas ──
-  rReporteCalendar(yr, mo, S.visitas, S.historial, activos);
-
-  // ── Hot prospects: ALL activos sorted by urgency ──
-  rReporteHot(activos);
-
-  // ── Activity: ALL pipeline prospectos (not month-filtered) ──
-  rReporteActivity(yr, mo, S.historial, S.visitas, activos);
+  const selVal=sel?.value||(new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));
+  const [yr,mo]=selVal.split("-").map(Number);
+  const inMonth=s=>{if(!s)return false;try{const d=new Date(String(s).substring(0,10)+"T12:00:00");return d.getFullYear()===yr&&d.getMonth()+1===mo;}catch{return false;}};
+  const mesLbl=new Date(yr,mo-1,1).toLocaleDateString("es-MX",{month:"long",year:"numeric"});
+  const tEl=document.getElementById("rep-titulo");
+  if(tEl) tEl.innerHTML="Reporte Mensual <em>— "+mesLbl.charAt(0).toUpperCase()+mesLbl.slice(1)+"</em>";
+  const activos=S.pipeline.filter(p=>!["7-Perdido"].includes(p.etapa));
+  rRepNuevos(yr,mo,inMonth,activos);
+  rRepVisitas(yr,mo,inMonth);
+  rRepSeguimientos(activos);
+  rReporteCalendar(yr,mo,S.visitas,S.historial,activos);
 }
 
 function rReporteCalendar(yr, mo, allVisitas, allHistorial, allActivos) {
@@ -3003,6 +2962,170 @@ function toggleHotCard(id) {
   const card = document.getElementById("hot-card-"+id);
   if (!card) return;
   card.classList.toggle("expanded");
+}
+
+
+// ============================================================
+// EXECUTIVE SUMMARY
+// ============================================================
+function rExecSummary(yr, mo, allVisitas, allActivos, allHistorial) {
+  const wrap = document.getElementById("exec-summary");
+  if (!wrap) return;
+
+  const inMonth = s => {
+    if (!s) return false;
+    try { const d = new Date(String(s).substring(0,10)+"T12:00:00"); return d.getFullYear()===yr && d.getMonth()+1===mo; }
+    catch { return false; }
+  };
+
+  // ── Visited clients (from Visitas tab this month, deduplicated) ──
+  const visitasMes = allVisitas.filter(v => inMonth(v.fecha))
+    .sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+  const visitasByEmp = {};
+  visitasMes.forEach(v => { if (!visitasByEmp[v.empresa]) visitasByEmp[v.empresa] = v; });
+  const visitedClients = Object.values(visitasByEmp);
+
+  // ── New prospects this month ──
+  const newProspectos = allActivos.filter(p => inMonth(p.createdAt))
+    .sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+
+  // ── Seguimientos: activos with proximoPaso + fechaProxPaso ──
+  const now = new Date(); now.setHours(0,0,0,0);
+  const seguimientos = allActivos
+    .filter(p => p.fechaProxPaso && p.proximoPaso)
+    .map(p => ({...p, _d: Math.round((new Date(p.fechaProxPaso+"T12:00:00")-now)/86400000)}))
+    .sort((a,b) => a._d - b._d);
+
+  const etapaColor = {"1-Prospecto":"#8A94A6","2-Contactado":"#00AEEF","3-Reunion":"#7B61FF","3-Reunión":"#7B61FF","4-Cotización":"#F0B800","5-Negociación":"#F07020","6-Cerrado":"#00B37E"};
+  const getCiudad  = empresa => allActivos.find(p=>p.empresa===empresa)?.ciudad||"";
+
+  // ── Build visited HTML ──
+  const visitedHtml = visitedClients.length === 0
+    ? `<div class="exec-empty">Sin visitas registradas este mes</div>`
+    : visitedClients.map(v => {
+        const ciudad   = v.ciudad || getCiudad(v.empresa);
+        const prospect = allActivos.find(p=>p.empresa===v.empresa);
+        const etapa    = ETAPAS.find(e=>e.id===prospect?.etapa);
+        const eColor   = etapaColor[prospect?.etapa]||"#8A94A6";
+        return `<div class="exec-item">
+          <div class="exec-item-left">
+            <div class="exec-item-emp">${v.empresa}</div>
+            ${v.contacto?`<div class="exec-item-contact">👤 ${v.contacto}${v.cargo?" · "+v.cargo:""}</div>`:""}
+            ${ciudad?`<div class="exec-item-city">📍 ${ciudad}</div>`:""}
+            ${v.notas?`<div class="exec-item-nota">${v.notas.substring(0,180)}${v.notas.length>180?"…":""}</div>`:""}
+            ${v.proximaAccion?`<div style="font-size:11px;color:var(--cyan);margin-top:5px">→ ${v.proximaAccion}</div>`:""}
+          </div>
+          <div class="exec-item-right">
+            ${etapa?`<span class="exec-etapa-badge" style="background:${eColor}22;color:${eColor}">${etapa.label}</span>`:""}
+            <span class="exec-date">${fmtDate(v.fecha)}</span>
+          </div>
+        </div>`;
+      }).join("");
+
+  // ── Build new prospects HTML ──
+  const newHtml = newProspectos.length === 0
+    ? `<div class="exec-empty">Sin prospectos nuevos este mes</div>`
+    : newProspectos.map(p => {
+        const eColor = etapaColor[p.etapa]||"#8A94A6";
+        const etLbl  = ETAPAS.find(e=>e.id===p.etapa)?.label||"";
+        return `<div class="exec-item">
+          <div class="exec-item-left">
+            <div class="exec-item-emp">${p.empresa}</div>
+            ${p.contacto?`<div class="exec-item-contact">👤 ${p.contacto}${p.cargo?" · "+p.cargo:""}</div>`:""}
+            ${p.ciudad?`<div class="exec-item-city">📍 ${p.ciudad}</div>`:""}
+            ${p.necesidad?`<div style="font-size:12px;color:var(--t2);margin-top:3px">📦 ${p.necesidad}</div>`:""}
+            ${p.fuente?`<div style="font-size:11px;color:var(--t3);margin-top:2px">Fuente: ${p.fuente}</div>`:""}
+          </div>
+          <div class="exec-item-right">
+            <span class="exec-etapa-badge" style="background:${eColor}22;color:${eColor}">${etLbl}</span>
+            <span class="exec-date">${fmtDate(p.createdAt)}</span>
+          </div>
+        </div>`;
+      }).join("");
+
+  // ── Build seguimientos HTML ──
+  const segHtml = seguimientos.length === 0
+    ? `<div class="exec-empty" style="grid-column:span 3">Sin seguimientos programados</div>`
+    : seguimientos.map(p => {
+        const d   = p._d;
+        const cls = d<0?"seg-urg-venc":d===0?"seg-urg-hoy":d<=3?"seg-urg-prox":"seg-urg-ok";
+        const lbl = d<0?`${Math.abs(d)}d atrás`:d===0?"HOY":`${d}d`;
+        const etLbl = ETAPAS.find(e=>e.id===p.etapa)?.label||p.etapa;
+        return `<div class="seg-item">
+          <div class="seg-urgencia ${cls}">${lbl}</div>
+          <div class="seg-body">
+            <div class="seg-emp">${p.empresa}</div>
+            <div class="seg-accion">${p.proximoPaso}</div>
+            <div class="seg-etapa">${etLbl}${p.ciudad?" · 📍"+p.ciudad:""}</div>
+          </div>
+        </div>`;
+      }).join("");
+
+  const vencidos = seguimientos.filter(p=>p._d<0).length;
+  wrap.innerHTML = `
+    <div class="exec-panel">
+      <div class="exec-ph">
+        <div class="exec-ph-title">🚗 Clientes visitados</div>
+        <div class="exec-ph-count">${visitedClients.length}</div>
+      </div>
+      <div class="exec-list">${visitedHtml}</div>
+    </div>
+    <div class="exec-panel">
+      <div class="exec-ph">
+        <div class="exec-ph-title">✨ Nuevos prospectos</div>
+        <div class="exec-ph-count">${newProspectos.length}</div>
+      </div>
+      <div class="exec-list">${newHtml}</div>
+    </div>
+    <div class="exec-panel full">
+      <div class="exec-ph">
+        <div class="exec-ph-title">⏰ Seguimientos programados</div>
+        <div class="exec-ph-count" style="color:${vencidos>0?"var(--red)":"var(--cyan)"}">${seguimientos.length}${vencidos>0?" ("+vencidos+" vencidos)":""}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">${segHtml}</div>
+    </div>`;
+}
+
+
+function rRepNuevos(yr,mo,inMonth,activos){
+  const w=document.getElementById("rep-nuevos"); if(!w) return;
+  const ec={"1-Prospecto":"#8A94A6","2-Contactado":"#00AEEF","3-Reunión":"#7B61FF","4-Cotización":"#F0B800","5-Negociación":"#F07020","6-Cerrado":"#00B37E"};
+  const n=activos.filter(p=>inMonth(p.createdAt)).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  const body=n.length===0
+    ?`<div style="padding:24px 20px;color:var(--t3);font-size:13px">Sin prospectos nuevos este mes.</div>`
+    :`<div class="rep-chips">${n.map(p=>{const c=ec[p.etapa]||"#8A94A6",el=ETAPAS.find(e=>e.id===p.etapa)?.label||"";
+      return `<div class="rep-chip" style="border-left-color:${c}"><div class="rep-chip-emp">${p.empresa}</div>${p.contacto?`<div style="font-size:11px;color:var(--t2);margin-top:2px">👤 ${p.contacto}</div>`:""} ${p.ciudad?`<div style="font-size:11px;color:var(--t3);margin-top:1px">📍 ${p.ciudad}</div>`:""} ${p.necesidad?`<div style="font-size:10px;color:var(--t3);margin-top:3px">📦 ${p.necesidad}</div>`:""}<div class="rep-chip-etapa" style="background:${c}22;color:${c}">${el}</div></div>`;
+    }).join("")}</div>`;
+  w.innerHTML=`<div class="rep-block-head"><div class="rep-block-title">✨ Nuevos Prospectos</div><div class="rep-block-count" style="color:var(--cyan)">${n.length}</div></div>${body}`;
+}
+
+function rRepVisitas(yr,mo,inMonth){
+  const w=document.getElementById("rep-visitas-mes"); if(!w) return;
+  const tc={"Prospección":"#8A94A6","Presentación":"#7B61FF","Cotización":"#F0B800","Seguimiento":"#00AEEF","Cierre":"#00B37E"};
+  const v=S.visitas.filter(x=>inMonth(x.fecha)).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  const u=[...new Set(v.map(x=>x.empresa))];
+  const body=v.length===0
+    ?`<div style="padding:24px 20px;color:var(--t3);font-size:13px">Sin visitas registradas este mes.<br><span style="font-size:11px">Usa el botón 🚗 en cada card del Pipeline.</span></div>`
+    :`<div class="rep-visit-grid">${v.map(x=>{const t=tc[x.tipoVisita]||"#7B61FF",ciudad=x.ciudad||S.pipeline.find(p=>p.empresa===x.empresa)?.ciudad||"";
+      return `<div class="rep-visit-card" style="border-top-color:${t}"><div class="rep-visit-card-head"><div><div class="rep-visit-emp">${x.empresa}</div>${x.contacto?`<div class="rep-visit-who">👤 ${x.contacto}${x.cargo?" · "+x.cargo:""}</div>`:""} ${ciudad?`<div class="rep-visit-city">📍 ${ciudad}</div>`:""}</div><span class="rep-visit-tipo" style="background:${t}22;color:${t}">${x.tipoVisita||"Visita"}</span></div><div class="rep-visit-nota">${x.notas||"<em style='color:var(--t3)'>Sin notas.</em>"}</div>${x.proximaAccion?`<div class="rep-visit-sig">→ ${x.proximaAccion}</div>`:""}<div class="rep-visit-date">📅 ${fmtDate(x.fecha)}</div></div>`;
+    }).join("")}</div>`;
+  const sub=u.length>0?`<div style="font-size:12px;color:var(--t2);margin-top:3px">${u.join(" · ")}</div>`:"";
+  w.innerHTML=`<div class="rep-block-head"><div><div class="rep-block-title">🚗 Visitas Realizadas</div>${sub}</div><div class="rep-block-count" style="color:var(--pur)">${v.length}</div></div>${body}`;
+}
+
+function rRepSeguimientos(activos){
+  const w=document.getElementById("rep-seguimientos"); if(!w) return;
+  const now=new Date(); now.setHours(0,0,0,0);
+  const s=activos.filter(p=>p.proximoPaso&&p.fechaProxPaso).map(p=>({...p,_d:Math.round((new Date(p.fechaProxPaso+"T12:00:00")-now)/86400000)})).sort((a,b)=>a._d-b._d);
+  const venc=s.filter(x=>x._d<0).length;
+  const body=s.length===0
+    ?`<div style="padding:24px 20px;color:var(--t3);font-size:13px">Sin seguimientos con fecha programada.</div>`
+    :`<div class="rep-seg-grid">${s.map(p=>{const d=p._d,bg=d<0?"var(--redD)":d===0?"var(--yelD)":d<=3?"var(--cyanD)":"var(--bg3)",cl=d<0?"var(--red)":d===0?"var(--yel)":d<=3?"var(--cyan)":"var(--t3)",lb=d<0?Math.abs(d)+"d atras":d===0?"HOY":d+"d",el=ETAPAS.find(e=>e.id===p.etapa)?.label||p.etapa;
+      return `<div class="rep-seg-card"><div class="rep-seg-pill" style="background:${bg};color:${cl}">${lb}</div><div><div class="rep-seg-emp">${p.empresa}</div><div class="rep-seg-paso">${p.proximoPaso}</div><div class="rep-seg-meta">${el}${p.ciudad?" · 📍 "+p.ciudad:""}</div></div></div>`;
+    }).join("")}</div>`;
+  const sub=venc>0?`<div style="font-size:12px;color:var(--red);margin-top:3px">⚠️ ${venc} vencido${venc>1?"s":""}</div>`:"";
+  const cc=venc>0?"var(--red)":"var(--grn)";
+  w.innerHTML=`<div class="rep-block-head"><div><div class="rep-block-title">⏰ Seguimientos Programados</div>${sub}</div><div class="rep-block-count" style="color:${cc}">${venc>0?s.length+" ("+venc+" venc.)":s.length}</div></div>${body}`;
 }
 
 document.addEventListener("keydown", e => { if(e.key === "Escape") { closeModal(); calClose(); } });
