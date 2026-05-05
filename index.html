@@ -975,12 +975,9 @@ function initListeners() {
   if (useFirebase) {
     dbSub("pipeline", d => { S.pipeline = d; refreshAll(); });
     dbSub("visitas",  d => {
-      // Preserve pending contactoObtenido inline edits (avoid onSnapshot overwriting them)
-      if (window._pendingCO) {
-        d.forEach(v => { if (window._pendingCO[v.id]!==undefined) v.contactoObtenido=window._pendingCO[v.id]; });
-        setTimeout(()=>{ window._pendingCO={}; }, 3000);
-      }
-      S.visitas = d; refreshAll();
+      S.visitas = d;
+      if (window._blockReporteRefresh) return;
+      refreshAll();
     });
     dbSub("clientes", d => { S.clientes = d; refreshAll(); });
   } else {
