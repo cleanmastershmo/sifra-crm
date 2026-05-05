@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PptxGenJS/3.12.0/pptxgen.bundle.js"></script>
 <style>
 /* ================================================================
    SIFRA CRM — Light Theme
@@ -405,6 +406,82 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .msg-save-btn:hover{background:var(--grnD);color:var(--grn);border-color:rgba(0,179,126,.3)}
 .msg-save-btn.saved{background:var(--grnD);color:var(--grn);border-color:rgba(0,179,126,.3)}
 .msg-save-hint{font-size:10px;color:var(--t3);font-style:italic;align-self:center}
+
+/* ── REPORTE MENSUAL ── */
+.rep-top { display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px }
+.rep-controls { display:flex;gap:8px;align-items:center }
+.rep-month-sel { padding:8px 12px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:13px;font-weight:600;cursor:pointer }
+.rep-month-sel:focus { outline:none;border-color:var(--cyan) }
+.rep-actions { display:flex;gap:8px }
+
+/* KPI row */
+.rep-kpis { display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px }
+.rep-kpi { background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh);text-align:center }
+.rep-kpi-icon { font-size:22px;margin-bottom:6px }
+.rep-kpi-val { font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;line-height:1 }
+.rep-kpi-lbl { font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:4px }
+.rep-kpi.c-cyan .rep-kpi-val { color:var(--cyan) }
+.rep-kpi.c-mag  .rep-kpi-val { color:var(--mag) }
+.rep-kpi.c-grn  .rep-kpi-val { color:var(--grn) }
+.rep-kpi.c-yel  .rep-kpi-val { color:var(--yel) }
+.rep-kpi.c-pur  .rep-kpi-val { color:var(--pur) }
+
+/* Calendar */
+.rep-calendar { background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh);margin-bottom:20px }
+.rep-cal-title { font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between }
+.rep-cal-legend { display:flex;gap:12px;flex-wrap:wrap }
+.rep-cal-leg-item { display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2) }
+.rep-cal-leg-dot { width:9px;height:9px;border-radius:50%;flex-shrink:0 }
+.cal-grid { display:grid;grid-template-columns:repeat(7,1fr);gap:4px }
+.cal-dow { text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);padding:4px 0 8px }
+.cal-day { min-height:58px;border-radius:6px;padding:5px;background:var(--bg2);border:1px solid var(--border);position:relative;cursor:default }
+.cal-day.empty { background:none;border-color:transparent }
+.cal-day.today { border-color:var(--cyan);background:var(--cyanD) }
+.cal-day-num { font-size:11px;font-weight:700;color:var(--t2);margin-bottom:3px }
+.cal-day.today .cal-day-num { color:var(--cyan) }
+.cal-dots { display:flex;flex-wrap:wrap;gap:2px;margin-top:2px }
+.cal-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0;cursor:pointer;transition:transform .1s }
+.cal-dot:hover { transform:scale(1.5) }
+.cal-dot-prosp { background:#8A94A6 }
+.cal-dot-visita { background:var(--pur) }
+.cal-dot-cotiz  { background:var(--yel) }
+.cal-dot-seg    { background:var(--cyan) }
+.cal-dot-neg    { background:var(--org) }
+.cal-dot-ganado { background:var(--grn) }
+
+/* Hot prospects */
+.rep-section-title { font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;margin-bottom:12px;display:flex;align-items:center;gap:8px }
+.rep-section-title::after { content:'';flex:1;height:1px;background:var(--border) }
+.rep-hot-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px }
+.rep-hot-card { background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh);border-top:3px solid var(--yel) }
+.rep-hot-card.ganado { border-top-color:var(--grn) }
+.rep-hot-card.neg { border-top-color:var(--org) }
+.rep-hot-emp { font-weight:700;font-size:14px }
+.rep-hot-contact { font-size:12px;color:var(--t2);margin-top:2px }
+.rep-hot-etapa { display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--yelD);color:var(--yel);margin:6px 0;text-transform:uppercase }
+.rep-hot-row { display:flex;gap:6px;margin-top:6px;font-size:12px }
+.rep-hot-lbl { color:var(--t3);font-weight:600;min-width:80px }
+.rep-hot-val { color:var(--text);flex:1 }
+.rep-hot-monto { font-family:monospace;font-size:13px;font-weight:700;color:var(--grn);margin-top:8px }
+
+/* Activity table */
+.rep-act-table { background:var(--bg1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-bottom:20px }
+
+/* PRINT STYLES */
+@media print {
+  .nav, .cfg-banner, .toolbar, .page-hdr .btn,
+  .rep-actions, .rep-controls select, .rep-month-sel,
+  .nav-right, #btn-backup { display:none !important }
+  .view { display:none !important }
+  #view-reporte { display:block !important }
+  .main { padding:0 !important }
+  body { background:white !important }
+  .rep-hot-card, .panel, .rep-kpi, .rep-act-table { box-shadow:none !important }
+  .rep-top { margin-bottom:10px }
+  @page { margin:1.5cm; size:A4 }
+}
+@media(max-width:1100px){ .rep-kpis{grid-template-columns:repeat(3,1fr)} .rep-hot-grid{grid-template-columns:1fr 1fr} }
+@media(max-width:700px) { .rep-kpis{grid-template-columns:1fr 1fr} .rep-hot-grid{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -422,6 +499,7 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
     <button class="nav-tab"        id="tab-seguimiento" onclick="nav('seguimiento')">⏰ <span>Seguimiento</span> <span class="nav-badge" id="nb-seg"></span></button>
     <button class="nav-tab"        id="tab-visitas"     onclick="nav('visitas')">📋 <span>Visitas</span></button>
     <button class="nav-tab"        id="tab-clientes"    onclick="nav('clientes')">🏢 <span>Clientes</span></button>
+    <button class="nav-tab"        id="tab-reporte"     onclick="nav('reporte')">📑 <span>Reporte</span></button>
   </div>
   <div class="nav-right" style="gap:6px">
     <button class="btn btn-secondary btn-sm" onclick="backupLocal()" id="btn-backup" title="Guardar copia local en tu computadora">💾 Respaldo local</button>
@@ -602,6 +680,60 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
   </div>
 </div>
 
+
+<!-- ══ REPORTE MENSUAL ══ -->
+<div class="view" id="view-reporte">
+  <div class="rep-top">
+    <div>
+      <div class="page-title" id="rep-titulo">Reporte Mensual <em>— Actividad Comercial</em></div>
+      <div style="font-size:12px;color:var(--t3);margin-top:3px" id="rep-subtitulo">Grupo Sifra · Mario Rivera · Gerente Comercial</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="rep-controls">
+        <select class="rep-month-sel" id="rep-month" onchange="rReporte()"></select>
+      </div>
+      <div class="rep-actions">
+        <button class="btn btn-secondary btn-sm" onclick="window.print()" title="Imprime o guarda como PDF desde el diálogo del navegador">🖨️ PDF / Imprimir</button>
+        <button class="btn btn-primary btn-sm" onclick="exportReportePPT()">📊 Exportar PPT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="rep-kpis" id="rep-kpis"></div>
+
+  <!-- Calendario -->
+  <div class="rep-calendar">
+    <div class="rep-cal-title">
+      <span>📅 Calendario de Actividad</span>
+      <div class="rep-cal-legend">
+        <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-prosp"></div>Prospección</div>
+        <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-visita"></div>Visita</div>
+        <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-cotiz"></div>Cotización</div>
+        <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-seg"></div>Seguimiento</div>
+        <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-neg"></div>Negociación</div>
+        <div class="rep-cal-leg-item"><div class="rep-cal-leg-dot cal-dot-ganado"></div>Ganado</div>
+      </div>
+    </div>
+    <div id="rep-calendar"></div>
+  </div>
+
+  <!-- Hot Prospects -->
+  <div class="rep-section-title">🔥 Prospectos Activos — Detalle</div>
+  <div class="rep-hot-grid" id="rep-hot"></div>
+
+  <!-- Activity log -->
+  <div class="rep-section-title">📋 Registro de Actividad del Mes</div>
+  <div class="rep-act-table">
+    <table>
+      <thead><tr>
+        <th>Fecha</th><th>Empresa</th><th>Contacto</th>
+        <th>Actividad</th><th>Resultado / Notas</th><th>Siguiente Paso</th>
+      </tr></thead>
+      <tbody id="rep-act-tbody"></tbody>
+    </table>
+  </div>
+</div>
 </div><!-- /main -->
 
 <!-- MODAL -->
@@ -788,6 +920,7 @@ function refreshAll() {
   if (av === "view-seguimiento") rSeguimiento();
   if (av === "view-visitas")     rVisitas();
   if (av === "view-clientes")    rClientes();
+  if (av === "view-reporte")     rReporte();
 }
 
 // ============================================================
@@ -798,7 +931,7 @@ function nav(name) {
   document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
   document.getElementById("view-" + name).classList.add("active");
   document.getElementById("tab-" + name).classList.add("active");
-  ({dashboard:rDashboard, pipeline:rPipeline, seguimiento:rSeguimiento, visitas:rVisitas, clientes:rClientes})[name]?.();
+  ({dashboard:rDashboard, pipeline:rPipeline, seguimiento:rSeguimiento, visitas:rVisitas, clientes:rClientes, reporte:rReporte})[name]?.();
 }
 
 // ============================================================
@@ -2167,6 +2300,390 @@ async function backupLocal() {
   } finally {
     if (btn) { btn.textContent = "💾 Respaldo local"; btn.disabled = false; }
   }
+}
+
+
+// ============================================================
+// REPORTE MENSUAL
+// ============================================================
+
+function initReporteMeses() {
+  const sel = document.getElementById("rep-month");
+  if (!sel || sel.options.length > 0) return;
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2,"0");
+    const lbl = d.toLocaleDateString("es-MX", { month:"long", year:"numeric" });
+    const opt = document.createElement("option");
+    opt.value = val; opt.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function rReporte() {
+  if (!useFirebase) {
+    S.pipeline  = LS.get("pipeline");
+    S.visitas   = LS.get("visitas");
+    S.historial = LS.get("historial");
+  }
+  initReporteMeses();
+
+  const selVal = document.getElementById("rep-month")?.value || "";
+  const [yr, mo] = selVal ? selVal.split("-").map(Number) : [new Date().getFullYear(), new Date().getMonth()+1];
+
+  // Date helpers
+  const inMonth = dateStr => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr.substring(0,10) + "T00:00:00");
+    return d.getFullYear() === yr && (d.getMonth()+1) === mo;
+  };
+
+  // ── Collect month activities ──
+  // From historial (movements this month)
+  const histMes  = S.historial.filter(h => inMonth(h.fecha));
+  // From visitas this month
+  const visitasMes = S.visitas.filter(v => inMonth(v.fecha));
+  // From pipeline: prospects updated this month
+  const pipeActivos = S.pipeline.filter(p => !["7-Perdido"].includes(p.etapa));
+  const pipeNuevosMes = S.pipeline.filter(p => inMonth(p.createdAt));
+  const pipeCotizMes  = S.pipeline.filter(p => p.etapa === "4-Cotización" && inMonth(p.ultimaActividad));
+  const pipeGanadoMes = S.pipeline.filter(p => p.etapa === "6-Cerrado" && inMonth(p.ultimaActividad));
+  const pipePipeline  = S.pipeline.filter(p => !["6-Cerrado","7-Perdido"].includes(p.etapa)).reduce((s,p)=>s+(p.potencialMensual||0),0);
+
+  // ── Update title ──
+  const mesLbl = new Date(yr, mo-1, 1).toLocaleDateString("es-MX", { month:"long", year:"numeric" });
+  const titulo = document.getElementById("rep-titulo");
+  if (titulo) titulo.innerHTML = `Reporte Mensual <em>— ${mesLbl.charAt(0).toUpperCase()+mesLbl.slice(1)}</em>`;
+
+  // ── KPIs ──
+  const kpisEl = document.getElementById("rep-kpis");
+  if (kpisEl) kpisEl.innerHTML = [
+    { icon:"✨", val: pipeNuevosMes.length,  lbl:"Prospectos nuevos",  cls:"c-cyan" },
+    { icon:"🚗", val: visitasMes.length,     lbl:"Visitas realizadas", cls:"c-pur"  },
+    { icon:"📄", val: pipeCotizMes.length,   lbl:"Cotizaciones",       cls:"c-yel"  },
+    { icon:"🎯", val: pipeGanadoMes.length,  lbl:"Cierres ganados",    cls:"c-grn"  },
+    { icon:"💰", val: "$"+fmtK(pipePipeline),lbl:"Pipeline activo",    cls:"c-mag"  },
+  ].map(k => `<div class="rep-kpi ${k.cls}">
+    <div class="rep-kpi-icon">${k.icon}</div>
+    <div class="rep-kpi-val">${k.val}</div>
+    <div class="rep-kpi-lbl">${k.lbl}</div>
+  </div>`).join("");
+
+  // ── Calendar ──
+  rReporteCalendar(yr, mo, histMes, visitasMes);
+
+  // ── Hot prospects cards ──
+  rReporteHot(pipeActivos);
+
+  // ── Activity log ──
+  rReporteActivity(yr, mo, histMes, visitasMes);
+}
+
+function rReporteCalendar(yr, mo, histMes, visitasMes) {
+  const cal = document.getElementById("rep-calendar");
+  if (!cal) return;
+
+  const firstDay = new Date(yr, mo-1, 1).getDay(); // 0=Sun
+  const daysInMo = new Date(yr, mo, 0).getDate();
+  const today    = new Date();
+
+  // Build events per day
+  const dayEvents = {};
+  const addDot = (dateStr, type) => {
+    if (!dateStr) return;
+    const d = new Date(dateStr.substring(0,10)+"T00:00:00");
+    if (d.getFullYear()===yr && (d.getMonth()+1)===mo) {
+      const day = d.getDate();
+      if (!dayEvents[day]) dayEvents[day] = [];
+      dayEvents[day].push(type);
+    }
+  };
+
+  histMes.forEach(h => {
+    const t = h.tipo==="etapa" ? dotTypeFromEtapa(h.etapaNueva) :
+              h.tipo==="visita" ? "visita" :
+              h.tipo==="creado" ? "prosp" : "seg";
+    addDot(h.fecha, t);
+  });
+  visitasMes.forEach(v => addDot(v.fecha, "visita"));
+
+  const dotClass = { prosp:"cal-dot-prosp", visita:"cal-dot-visita", cotiz:"cal-dot-cotiz", seg:"cal-dot-seg", neg:"cal-dot-neg", ganado:"cal-dot-ganado" };
+  const dows = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+  let html = '<div class="cal-grid">';
+  // Day of week headers
+  dows.forEach(d => { html += `<div class="cal-dow">${d}</div>`; });
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>';
+  // Days
+  for (let d = 1; d <= daysInMo; d++) {
+    const isToday = today.getDate()===d && today.getMonth()+1===mo && today.getFullYear()===yr;
+    const evts = dayEvents[d] || [];
+    const dots = evts.slice(0,6).map(t => `<div class="cal-dot ${dotClass[t]||'cal-dot-seg'}" title="${t}"></div>`).join("");
+    html += `<div class="cal-day${isToday?" today":""}">
+      <div class="cal-day-num">${d}</div>
+      <div class="cal-dots">${dots}</div>
+    </div>`;
+  }
+  html += "</div>";
+  cal.innerHTML = html;
+}
+
+function dotTypeFromEtapa(etapa) {
+  if (!etapa) return "seg";
+  if (etapa === "1-Prospecto" || etapa === "2-Contactado") return "prosp";
+  if (etapa === "3-Reunión") return "visita";
+  if (etapa === "4-Cotización") return "cotiz";
+  if (etapa === "5-Negociación") return "neg";
+  if (etapa === "6-Cerrado") return "ganado";
+  return "seg";
+}
+
+function rReporteHot(activos) {
+  const hot = activos
+    .filter(p => ["3-Reunión","4-Cotización","5-Negociación","6-Cerrado"].includes(p.etapa))
+    .sort((a,b) => {
+      const order = {"6-Cerrado":0,"5-Negociación":1,"4-Cotización":2,"3-Reunión":3};
+      return (order[a.etapa]||9) - (order[b.etapa]||9);
+    });
+
+  const grid = document.getElementById("rep-hot");
+  if (!grid) return;
+
+  if (!hot.length) {
+    grid.innerHTML = `<div style="grid-column:span 3;text-align:center;padding:24px;color:var(--t3);font-size:13px">Sin prospectos en etapas avanzadas este mes</div>`;
+    return;
+  }
+
+  grid.innerHTML = hot.map(p => {
+    const etapa = ETAPAS.find(e => e.id === p.etapa);
+    const cardCls = p.etapa === "6-Cerrado" ? "ganado" : p.etapa === "5-Negociación" ? "neg" : "";
+    return `<div class="rep-hot-card ${cardCls}">
+      <div class="rep-hot-emp">${p.empresa}</div>
+      <div class="rep-hot-contact">${p.contacto||""}${p.cargo?" · "+p.cargo:""}</div>
+      <div><span class="rep-hot-etapa">${etapa?.label||p.etapa}</span></div>
+      <div class="rep-hot-row"><span class="rep-hot-lbl">Necesidad:</span><span class="rep-hot-val">${p.necesidad||"—"}</span></div>
+      <div class="rep-hot-row"><span class="rep-hot-lbl">Último avance:</span><span class="rep-hot-val">${p.proximoPaso||p.notas?.substring(0,80)||"—"}</span></div>
+      <div class="rep-hot-row"><span class="rep-hot-lbl">Próxima acción:</span><span class="rep-hot-val">${p.proximoPaso||"—"}</span></div>
+      <div class="rep-hot-row"><span class="rep-hot-lbl">Fecha:</span><span class="rep-hot-val">${fmtDate(p.fechaProxPaso)}</span></div>
+      ${p.potencialMensual ? `<div class="rep-hot-monto">💰 $${p.potencialMensual.toLocaleString("es-MX")}/mes</div>` : ""}
+    </div>`;
+  }).join("");
+}
+
+function rReporteActivity(yr, mo, histMes, visitasMes) {
+  const tbody = document.getElementById("rep-act-tbody");
+  if (!tbody) return;
+
+  // Merge historial + visitas into one activity list
+  const acts = [];
+
+  histMes.forEach(h => {
+    let accion = "", resultado = "", siguiente = "";
+    if (h.tipo === "etapa") {
+      accion = `Cambio de etapa: ${ETAPAS.find(e=>e.id===h.etapaAnterior)?.label||h.etapaAnterior||"Inicio"} → ${ETAPAS.find(e=>e.id===h.etapaNueva)?.label||h.etapaNueva}`;
+      resultado = h.descripcion || "";
+    } else if (h.tipo === "nota") {
+      accion = "Nota / Seguimiento";
+      resultado = h.descripcion || "";
+    } else if (h.tipo === "visita") {
+      accion = "Visita registrada";
+      resultado = h.descripcion || "";
+    } else if (h.tipo === "creado") {
+      accion = "Prospecto creado";
+      resultado = h.descripcion || "";
+    } else {
+      accion = h.tipo; resultado = h.descripcion || "";
+    }
+    // Find prospect for next step
+    const p = S.pipeline.find(x => x.id === h.prospectoId);
+    siguiente = p?.proximoPaso || "";
+    acts.push({ fecha:h.fecha, empresa:h.empresa||"—", contacto:"—", accion, resultado, siguiente });
+  });
+
+  visitasMes.forEach(v => {
+    acts.push({ fecha:v.fecha, empresa:v.empresa||"—", contacto:v.contacto||"—", accion:`Visita: ${v.tipoVisita||""}`, resultado:v.notas||"—", siguiente:v.proximaAccion||"—" });
+  });
+
+  acts.sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+
+  if (!acts.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📋</div><div class="empty-txt">Sin actividad registrada este mes</div></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = acts.map(a => `<tr>
+    <td style="white-space:nowrap;font-size:12px">${fmtDate(a.fecha)}</td>
+    <td class="td-emp">${a.empresa}</td>
+    <td style="font-size:12px">${a.contacto}</td>
+    <td style="font-size:12px;font-weight:600">${a.accion}</td>
+    <td style="font-size:12px;color:var(--t2);max-width:200px">${a.resultado}</td>
+    <td style="font-size:12px;color:var(--cyan)">${a.siguiente}</td>
+  </tr>`).join("");
+}
+
+// ============================================================
+// EXPORT PPT
+// ============================================================
+async function exportReportePPT() {
+  if (typeof PptxGenJS === "undefined") { toast("PptxGenJS no cargó — verifica conexión","error"); return; }
+  toast("Generando presentación...","info");
+
+  const selVal = document.getElementById("rep-month")?.value || "";
+  const [yr, mo] = selVal ? selVal.split("-").map(Number) : [new Date().getFullYear(), new Date().getMonth()+1];
+  const mesLbl = new Date(yr, mo-1, 1).toLocaleDateString("es-MX", { month:"long", year:"numeric" });
+  const mesTitle = mesLbl.charAt(0).toUpperCase() + mesLbl.slice(1);
+
+  const pptx = new PptxGenJS();
+  pptx.layout = "LAYOUT_WIDE"; // 16:9
+
+  // Colors
+  const CYAN  = "00AEEF";
+  const MAG   = "EC008C";
+  const GRN   = "00B37E";
+  const YEL   = "F0B800";
+  const DARK  = "1C1C1E";
+  const GRAY  = "8A94A6";
+  const LBG   = "F4F6F9";
+
+  // ── SLIDE 1: Portada ──
+  const s1 = pptx.addSlide();
+  s1.background = { color: DARK };
+  s1.addShape(pptx.ShapeType.rect, { x:0, y:0, w:"100%", h:0.08, fill:{ color:CYAN } });
+  s1.addShape(pptx.ShapeType.rect, { x:0, y:7.42, w:"100%", h:0.08, fill:{ color:MAG } });
+  s1.addText("GRUPO SIFRA", { x:0.5, y:0.8, w:9, h:0.5, fontSize:13, bold:true, color:CYAN, charSpacing:3 });
+  s1.addText("Reporte Mensual de Actividad Comercial", { x:0.5, y:1.5, w:9, h:1, fontSize:32, bold:true, color:"FFFFFF" });
+  s1.addText(mesTitle, { x:0.5, y:2.7, w:6, h:0.6, fontSize:20, color:GRAY });
+  s1.addText("Mario Rivera · Gerente Comercial", { x:0.5, y:3.4, w:6, h:0.4, fontSize:14, color:GRAY });
+  s1.addShape(pptx.ShapeType.rect, { x:0.5, y:6.8, w:3, h:0.04, fill:{ color:CYAN } });
+
+  // ── SLIDE 2: KPIs Resumen ──
+  const inMonth = dateStr => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr.substring(0,10)+"T00:00:00");
+    return d.getFullYear()===yr && (d.getMonth()+1)===mo;
+  };
+  const pipeNuevosMes = S.pipeline.filter(p => inMonth(p.createdAt)).length;
+  const visitasMes    = S.visitas.filter(v => inMonth(v.fecha)).length;
+  const cotizMes      = S.pipeline.filter(p => p.etapa==="4-Cotización" && inMonth(p.ultimaActividad)).length;
+  const ganadoMes     = S.pipeline.filter(p => p.etapa==="6-Cerrado"    && inMonth(p.ultimaActividad)).length;
+  const pipeline      = S.pipeline.filter(p => !["6-Cerrado","7-Perdido"].includes(p.etapa)).reduce((s,p)=>s+(p.potencialMensual||0),0);
+
+  const s2 = pptx.addSlide();
+  s2.background = { color:"FFFFFF" };
+  s2.addShape(pptx.ShapeType.rect, { x:0, y:0, w:"100%", h:0.07, fill:{ color:CYAN } });
+  s2.addText("RESUMEN EJECUTIVO", { x:0.4, y:0.2, w:9, h:0.4, fontSize:11, bold:true, color:CYAN, charSpacing:2 });
+  s2.addText("Indicadores del mes", { x:0.4, y:0.65, w:9, h:0.5, fontSize:22, bold:true, color:DARK });
+
+  const kpis = [
+    { icon:"✨", val:pipeNuevosMes, lbl:"Prospectos
+Nuevos",   color:CYAN },
+    { icon:"🚗", val:visitasMes,    lbl:"Visitas
+Realizadas",  color:"7B61FF" },
+    { icon:"📄", val:cotizMes,      lbl:"Cotizaciones
+Enviadas",color:YEL },
+    { icon:"🎯", val:ganadoMes,     lbl:"Cierres
+Ganados",     color:GRN },
+    { icon:"💰", val:"$"+fmtK(pipeline), lbl:"Pipeline
+Activo",color:MAG },
+  ];
+  kpis.forEach((k,i) => {
+    const x = 0.3 + i * 2.4;
+    s2.addShape(pptx.ShapeType.roundRect, { x, y:1.4, w:2.1, h:2.0, fill:{ color:"F4F6F9" }, line:{ color:"DDE1EA", width:1 }, rectRadius:0.1 });
+    s2.addText(k.val.toString(), { x, y:1.55, w:2.1, h:0.9, fontSize:36, bold:true, color:k.color, align:"center" });
+    s2.addText(k.lbl, { x, y:2.5, w:2.1, h:0.6, fontSize:11, color:GRAY, align:"center" });
+  });
+
+  // ── SLIDE 3: Pipeline activo (tabla) ──
+  const s3 = pptx.addSlide();
+  s3.background = { color:"FFFFFF" };
+  s3.addShape(pptx.ShapeType.rect, { x:0, y:0, w:"100%", h:0.07, fill:{ color:CYAN } });
+  s3.addText("PIPELINE ACTIVO", { x:0.4, y:0.2, w:9, h:0.4, fontSize:11, bold:true, color:CYAN, charSpacing:2 });
+  s3.addText("Prospectos en proceso", { x:0.4, y:0.65, w:9, h:0.5, fontSize:22, bold:true, color:DARK });
+
+  const activos = S.pipeline.filter(p => !["6-Cerrado","7-Perdido"].includes(p.etapa));
+  const tableData = [
+    [
+      { text:"Empresa", options:{ bold:true, color:"FFFFFF", fill:CYAN } },
+      { text:"Etapa",   options:{ bold:true, color:"FFFFFF", fill:CYAN } },
+      { text:"Contacto",options:{ bold:true, color:"FFFFFF", fill:CYAN } },
+      { text:"Temp.",   options:{ bold:true, color:"FFFFFF", fill:CYAN } },
+      { text:"Potencial/mes",options:{ bold:true, color:"FFFFFF", fill:CYAN } },
+      { text:"Próximo Paso",options:{ bold:true, color:"FFFFFF", fill:CYAN } },
+    ],
+    ...activos.slice(0,18).map((p,i) => {
+      const etLbl = ETAPAS.find(e=>e.id===p.etapa)?.label||p.etapa;
+      return [
+        { text:p.empresa||"", options:{ bold:true, fill: i%2===0 ? "FFFFFF":"F4F6F9" } },
+        { text:etLbl,         options:{ fill: i%2===0 ? "FFFFFF":"F4F6F9" } },
+        { text:(p.contacto||"")+(p.cargo?" · "+p.cargo:""), options:{ fill: i%2===0 ? "FFFFFF":"F4F6F9", fontSize:10 } },
+        { text:p.temperatura||"Frío", options:{ fill: i%2===0 ? "FFFFFF":"F4F6F9" } },
+        { text:p.potencialMensual ? "$"+p.potencialMensual.toLocaleString("es-MX") : "—", options:{ fill: i%2===0 ? "FFFFFF":"F4F6F9", color:GRN, bold:!!p.potencialMensual } },
+        { text:(p.proximoPaso||"—").substring(0,50), options:{ fill: i%2===0 ? "FFFFFF":"F4F6F9", fontSize:9, color:GRAY } },
+      ];
+    })
+  ];
+  s3.addTable(tableData, { x:0.3, y:1.35, w:12.1, fontSize:11, rowH:0.3, border:{ type:"solid", color:"DDE1EA", pt:0.5 } });
+
+  // ── SLIDE 4: Detalle prospectos calientes ──
+  const hot = S.pipeline.filter(p => ["4-Cotización","5-Negociación","6-Cerrado"].includes(p.etapa)).slice(0,6);
+  if (hot.length > 0) {
+    const s4 = pptx.addSlide();
+    s4.background = { color:"FFFFFF" };
+    s4.addShape(pptx.ShapeType.rect, { x:0, y:0, w:"100%", h:0.07, fill:{ color:YEL } });
+    s4.addText("PROSPECTOS CALIENTES", { x:0.4, y:0.2, w:9, h:0.4, fontSize:11, bold:true, color:YEL, charSpacing:2 });
+    s4.addText("Oportunidades prioritarias", { x:0.4, y:0.65, w:9, h:0.5, fontSize:22, bold:true, color:DARK });
+
+    hot.slice(0,6).forEach((p, i) => {
+      const col = i % 2, row = Math.floor(i / 2);
+      const x = 0.3 + col * 6.2, y = 1.35 + row * 2.1;
+      const etLbl = ETAPAS.find(e=>e.id===p.etapa)?.label||p.etapa;
+      const topClr = p.etapa==="6-Cerrado" ? GRN : p.etapa==="5-Negociación" ? "F07020" : YEL;
+      s4.addShape(pptx.ShapeType.roundRect, { x, y, w:5.9, h:1.9, fill:{ color:LBG }, line:{ color:"DDE1EA", width:1 }, rectRadius:0.08 });
+      s4.addShape(pptx.ShapeType.rect, { x, y, w:5.9, h:0.06, fill:{ color:topClr } });
+      s4.addText(p.empresa, { x:x+0.15, y:y+0.1, w:3.5, h:0.35, fontSize:14, bold:true, color:DARK });
+      s4.addText(etLbl,     { x:x+3.8,  y:y+0.1, w:1.9, h:0.3,  fontSize:10, bold:true, color:topClr, align:"right" });
+      s4.addText((p.contacto||"")+(p.cargo?" · "+p.cargo:""), { x:x+0.15, y:y+0.45, w:5.6, h:0.25, fontSize:10, color:GRAY });
+      s4.addText("Próximo paso: "+(p.proximoPaso||"—").substring(0,70), { x:x+0.15, y:y+0.72, w:5.6, h:0.35, fontSize:10, color:DARK });
+      s4.addText("Fecha: "+fmtDate(p.fechaProxPaso)+(p.potencialMensual ? "   💰 $"+p.potencialMensual.toLocaleString("es-MX")+"/mes" : ""), { x:x+0.15, y:y+1.1, w:5.6, h:0.3, fontSize:10, color:GRAY });
+      if (p.notas) s4.addText(p.notas.substring(0,80), { x:x+0.15, y:y+1.42, w:5.6, h:0.3, fontSize:9, color:GRAY, italic:true });
+    });
+  }
+
+  // ── SLIDE 5: Actividad del mes (visitas) ──
+  const visitasData = S.visitas.filter(v => inMonth(v.fecha));
+  if (visitasData.length > 0) {
+    const s5 = pptx.addSlide();
+    s5.background = { color:"FFFFFF" };
+    s5.addShape(pptx.ShapeType.rect, { x:0, y:0, w:"100%", h:0.07, fill:{ color:"7B61FF" } });
+    s5.addText("REGISTRO DE VISITAS", { x:0.4, y:0.2, w:9, h:0.4, fontSize:11, bold:true, color:"7B61FF", charSpacing:2 });
+    s5.addText(`Visitas del mes (${visitasData.length})`, { x:0.4, y:0.65, w:9, h:0.5, fontSize:22, bold:true, color:DARK });
+    const vData = [
+      [ { text:"Fecha",options:{bold:true,color:"FFFFFF",fill:"7B61FF"} }, { text:"Empresa",options:{bold:true,color:"FFFFFF",fill:"7B61FF"} }, { text:"Tipo",options:{bold:true,color:"FFFFFF",fill:"7B61FF"} }, { text:"Resultado / Notas",options:{bold:true,color:"FFFFFF",fill:"7B61FF"} }, { text:"Próxima Acción",options:{bold:true,color:"FFFFFF",fill:"7B61FF"} } ],
+      ...visitasData.slice(0,20).map((v,i) => [
+        { text:fmtDate(v.fecha), options:{fill:i%2===0?"FFFFFF":"F4F6F9"} },
+        { text:v.empresa||"",   options:{bold:true,fill:i%2===0?"FFFFFF":"F4F6F9"} },
+        { text:v.tipoVisita||"",options:{fill:i%2===0?"FFFFFF":"F4F6F9"} },
+        { text:(v.notas||"—").substring(0,80), options:{fill:i%2===0?"FFFFFF":"F4F6F9",fontSize:9,color:GRAY} },
+        { text:(v.proximaAccion||"—").substring(0,60), options:{fill:i%2===0?"FFFFFF":"F4F6F9",fontSize:9,color:CYAN} },
+      ])
+    ];
+    s5.addTable(vData, { x:0.3, y:1.35, w:12.1, fontSize:11, rowH:0.3, border:{ type:"solid", color:"DDE1EA", pt:0.5 } });
+  }
+
+  // ── Cierre ──
+  const sLast = pptx.addSlide();
+  sLast.background = { color:DARK };
+  sLast.addShape(pptx.ShapeType.rect, { x:0, y:0, w:"100%", h:0.08, fill:{color:CYAN} });
+  sLast.addShape(pptx.ShapeType.rect, { x:0, y:7.42, w:"100%", h:0.08, fill:{color:MAG} });
+  sLast.addText("Gracias", { x:1, y:2.5, w:11, h:1.2, fontSize:48, bold:true, color:"FFFFFF", align:"center" });
+  sLast.addText("Grupo Sifra · sifraimpresores.com · mrivera@sifraimpresores.com", { x:1, y:4, w:11, h:0.5, fontSize:13, color:GRAY, align:"center" });
+
+  const fecha = new Date().toISOString().split("T")[0];
+  pptx.writeFile({ fileName:`Sifra_Reporte_${mesTitle.replace(/ /g,"_")}_${fecha}.pptx` });
+  toast("Presentación exportada ✓","success");
 }
 
 document.addEventListener("keydown", e => { if(e.key === "Escape") closeModal(); });
