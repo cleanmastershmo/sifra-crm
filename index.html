@@ -908,7 +908,6 @@ function initListeners() {
     S.historial = LS.get("historial");
     console.log("LS loaded:", S.pipeline.length, "prospectos");
     refreshAll();
-    setTimeout(() => { S.pipeline = LS.get("pipeline"); refreshAll(); }, 400);
   }
 }
 
@@ -2264,7 +2263,7 @@ async function backupLocal() {
 
     if (useFirebase) {
       for (const c of colls) {
-        const snap = await db.collection(c).orderBy("createdAt","desc").get();
+        const snap = await db.collection(c).get();
         const data = snap.docs.map(d => ({ id:d.id, ...d.data() }));
         // Convert Firestore Timestamps to ISO strings for localStorage
         const clean = data.map(r => {
