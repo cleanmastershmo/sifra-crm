@@ -532,7 +532,7 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .rep-chip-emp{font-weight:700;font-size:13px}
 .rep-chip-etapa{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;margin-top:5px;display:inline-block}
 .rep-visit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:16px}
-.rep-visit-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;border-top:3px solid var(--pur)}
+.rep-visit-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;border-top:3px solid var(--pur);transition:opacity .2s,transform .2s}
 .rep-visit-card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px}
 .rep-visit-emp{font-weight:700;font-size:14px}
 .rep-visit-who{font-size:11px;color:var(--t2);margin-top:2px}
@@ -541,6 +541,13 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .rep-visit-nota{font-size:13px;color:var(--text);line-height:1.55;margin-top:8px;background:var(--bg1);border-radius:6px;padding:9px 11px;border-left:3px solid var(--pur)}
 .rep-visit-sig{font-size:11px;color:var(--cyan);margin-top:6px}
 .rep-visit-date{font-size:10px;color:var(--t3);margin-top:4px}
+.rep-visit-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.rep-visit-ctag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:10px;display:flex;align-items:center;gap:4px}
+.rep-visit-ctag.si {background:var(--grnD);color:var(--grn)}
+.rep-visit-ctag.ref{background:var(--cyanD);color:var(--cyan)}
+.rep-visit-ctag.no {background:var(--bg3);color:var(--t3)}
+.rep-visit-del{width:26px;height:26px;border-radius:5px;border:none;background:var(--redD);color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
+.rep-visit-del:hover{background:var(--red);color:#fff}
 .rep-seg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;padding:16px}
 .rep-seg-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;gap:10px}
 .rep-seg-pill{font-family:monospace;font-size:11px;font-weight:700;padding:4px 8px;border-radius:5px;text-align:center;flex-shrink:0;min-width:54px;align-self:flex-start;margin-top:2px}
@@ -1464,6 +1471,14 @@ function buildForm(type, d) {
     <div class="fg"><label class="flabel">Tipo de Visita</label><select class="fselect" id="f-tipo">${["Prospección","Presentación","Cotización","Seguimiento","Cierre"].map(x=>`<option value="${x}" ${x===d.tipoVisita?"selected":""}>${x}</option>`).join("")}</select></div>
     <div class="fg"><label class="flabel">Temperatura</label><select class="fselect" id="f-temp"><option value="Frío" ${(d.temperatura||"Frío")==="Frío"?"selected":""}>❄️ Frío</option><option value="Tibio" ${d.temperatura==="Tibio"?"selected":""}>🌡️ Tibio</option><option value="Caliente" ${d.temperatura==="Caliente"?"selected":""}>🔥 Caliente</option></select></div>
     <div class="fg s2"><label class="flabel">Próxima Acción</label><input class="finput" id="f-prox" value="${d.proximaAccion||""}" placeholder="¿Qué sigue?"></div>
+    <div class="fg">
+      <label class="flabel">¿Se obtuvo contacto clave de compras?</label>
+      <select class="fselect" id="f-contacto-obtenido">
+        <option value="no"  ${(!d.contactoObtenido||d.contactoObtenido==="no")?"selected":""}>✗ No — sin contacto directo</option>
+        <option value="si"  ${d.contactoObtenido==="si"?"selected":""}>✓ Sí — se habló con el comprador</option>
+        <option value="ref" ${d.contactoObtenido==="ref"?"selected":""}>↗ Referido — me pasaron a otra persona</option>
+      </select>
+    </div>
     <div class="fg s2"><label class="flabel">Notas de la Visita</label><textarea class="ftextarea" id="f-notas">${d.notas||""}</textarea></div>
   </div>`;
   }
@@ -1516,7 +1531,7 @@ async function saveModal() {
       const pp = S.pipeline.find(x => x.empresa === empSel);
       contactoFinal = pp?.contacto || "";
     }
-    data = { fecha:g("f-fecha")||today(), vendedor:g("f-vendedor")||"Mario", empresa:empresaFinal, contacto:contactoFinal, tipoVisita:g("f-tipo")||"Prospección", temperatura:g("f-temp")||"Frío", proximaAccion:g("f-prox"), notas:g("f-notas") };
+    data = { fecha:g("f-fecha")||today(), vendedor:g("f-vendedor")||"Mario", empresa:empresaFinal, contacto:contactoFinal, tipoVisita:g("f-tipo")||"Prospección", temperatura:g("f-temp")||"Frío", proximaAccion:g("f-prox"), notas:g("f-notas"), contactoObtenido:g("f-contacto-obtenido")||"no" };
     coll = "visitas";
   }
   if (type === "cliente") {
@@ -3102,15 +3117,70 @@ function rRepNuevos(yr,mo,inMonth,activos){
 function rRepVisitas(yr,mo,inMonth){
   const w=document.getElementById("rep-visitas-mes"); if(!w) return;
   const tc={"Prospección":"#8A94A6","Presentación":"#7B61FF","Cotización":"#F0B800","Seguimiento":"#00AEEF","Cierre":"#00B37E"};
-  const v=S.visitas.filter(x=>inMonth(x.fecha)).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
-  const u=[...new Set(v.map(x=>x.empresa))];
-  const body=v.length===0
-    ?`<div style="padding:24px 20px;color:var(--t3);font-size:13px">Sin visitas registradas este mes.<br><span style="font-size:11px">Usa el botón 🚗 en cada card del Pipeline.</span></div>`
-    :`<div class="rep-visit-grid">${v.map(x=>{const t=tc[x.tipoVisita]||"#7B61FF",ciudad=x.ciudad||S.pipeline.find(p=>p.empresa===x.empresa)?.ciudad||"";
-      return `<div class="rep-visit-card" style="border-top-color:${t}"><div class="rep-visit-card-head"><div><div class="rep-visit-emp">${x.empresa}</div>${x.contacto?`<div class="rep-visit-who">👤 ${x.contacto}${x.cargo?" · "+x.cargo:""}</div>`:""} ${ciudad?`<div class="rep-visit-city">📍 ${ciudad}</div>`:""}</div><span class="rep-visit-tipo" style="background:${t}22;color:${t}">${x.tipoVisita||"Visita"}</span></div><div class="rep-visit-nota">${x.notas||"<em style='color:var(--t3)'>Sin notas.</em>"}</div>${x.proximaAccion?`<div class="rep-visit-sig">→ ${x.proximaAccion}</div>`:""}<div class="rep-visit-date">📅 ${fmtDate(x.fecha)}</div></div>`;
-    }).join("")}</div>`;
-  const sub=u.length>0?`<div style="font-size:12px;color:var(--t2);margin-top:3px">${u.join(" · ")}</div>`:"";
-  w.innerHTML=`<div class="rep-block-head"><div><div class="rep-block-title">🚗 Visitas Realizadas</div>${sub}</div><div class="rep-block-count" style="color:var(--pur)">${v.length}</div></div>${body}`;
+
+  // DEDUP: Firebase + localStorage overlap — keep unique by id, then by empresa+fecha
+  const seen = new Set();
+  const allVis = S.visitas.filter(x => {
+    const key = x.id || (x.empresa + x.fecha);
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  const v = allVis.filter(x=>inMonth(x.fecha)).sort((a,b)=>new Date(b.fecha)-new Date(a.fecha));
+  const u = [...new Set(v.map(x=>x.empresa))];
+  const contactosObtenidos = v.filter(x=>x.contactoObtenido==="si"||x.contactoObtenido==="ref").length;
+
+  const ctTag = co => {
+    if (co==="si")  return `<div class="rep-visit-ctag si">✓ Contacto obtenido</div>`;
+    if (co==="ref") return `<div class="rep-visit-ctag ref">↗ Referido</div>`;
+    return `<div class="rep-visit-ctag no">✗ Sin contacto directo</div>`;
+  };
+
+  const body = v.length===0
+    ? `<div style="padding:24px 20px;color:var(--t3);font-size:13px">Sin visitas registradas este mes.<br><span style="font-size:11px">Usa el botón 🚗 en cada card del Pipeline.</span></div>`
+    : `<div class="rep-visit-grid">${v.map(x=>{
+        const t=tc[x.tipoVisita]||"#7B61FF";
+        const ciudad=x.ciudad||S.pipeline.find(p=>p.empresa===x.empresa)?.ciudad||"";
+        return `<div class="rep-visit-card" style="border-top-color:${t}" id="rvc-${x.id}">
+          <div class="rep-visit-card-head">
+            <div>
+              <div class="rep-visit-emp">${x.empresa}</div>
+              ${x.contacto?`<div class="rep-visit-who">👤 ${x.contacto}${x.cargo?" · "+x.cargo:""}</div>`:""}
+              ${ciudad?`<div class="rep-visit-city">📍 ${ciudad}</div>`:""}
+            </div>
+            <span class="rep-visit-tipo" style="background:${t}22;color:${t}">${x.tipoVisita||"Visita"}</span>
+          </div>
+          <div class="rep-visit-nota">${x.notas||"<em style='color:var(--t3)'>Sin notas.</em>"}</div>
+          ${x.proximaAccion?`<div class="rep-visit-sig">→ ${x.proximaAccion}</div>`:""}
+          <div class="rep-visit-foot">
+            ${ctTag(x.contactoObtenido)}
+            <div style="display:flex;gap:6px;align-items:center">
+              <div class="rep-visit-date">📅 ${fmtDate(x.fecha)}</div>
+              <button class="rep-visit-del" onclick="deleteVisitaRep('${x.id}')" title="Eliminar visita">✕</button>
+            </div>
+          </div>
+        </div>`;
+      }).join("")}</div>`;
+
+  const sub = u.length>0
+    ? `<div style="font-size:12px;color:var(--t2);margin-top:3px">${u.join(" · ")}</div>
+       <div style="font-size:11px;color:var(--grn);margin-top:2px">✓ Contactos obtenidos: <strong>${contactosObtenidos}</strong></div>`
+    : "";
+
+  w.innerHTML = `<div class="rep-block-head">
+    <div><div class="rep-block-title">🚗 Visitas Realizadas</div>${sub}</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="text-align:center">
+        <div class="rep-block-count" style="color:var(--pur)">${v.length}</div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--t3);margin-top:2px">Visitas</div>
+      </div>
+      <div style="width:1px;height:40px;background:var(--border)"></div>
+      <div style="text-align:center">
+        <div class="rep-block-count" style="color:var(--grn)">${contactosObtenidos}</div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--t3);margin-top:2px">Contactos</div>
+      </div>
+    </div>
+  </div>${body}`;
 }
 
 function rRepSeguimientos(activos){
@@ -3128,6 +3198,24 @@ function rRepSeguimientos(activos){
   w.innerHTML=`<div class="rep-block-head"><div><div class="rep-block-title">⏰ Seguimientos Programados</div>${sub}</div><div class="rep-block-count" style="color:${cc}">${venc>0?s.length+" ("+venc+" venc.)":s.length}</div></div>${body}`;
 }
 
+
+async function deleteVisitaRep(id) {
+  if (!confirm("¿Eliminar esta visita del registro?")) return;
+  await dbDel("visitas", id);
+  toast("Visita eliminada","info");
+  // Remove card from DOM immediately for snappy UX
+  const el = document.getElementById("rvc-"+id);
+  if (el) { el.style.opacity="0"; el.style.transform="scale(.95)"; setTimeout(()=>el.remove(),200); }
+  // Refresh block after short delay
+  setTimeout(()=>{
+    const activos = S.pipeline.filter(p=>!["7-Perdido"].includes(p.etapa));
+    const sel = document.getElementById("rep-month");
+    const selVal = sel?.value||(new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0"));
+    const [yr,mo] = selVal.split("-").map(Number);
+    const inMonth = s=>{ if(!s) return false; try{const d=new Date(String(s).substring(0,10)+"T12:00:00"); return d.getFullYear()===yr&&d.getMonth()+1===mo;}catch{return false;} };
+    rRepVisitas(yr,mo,inMonth);
+  }, 400);
+}
 document.addEventListener("keydown", e => { if(e.key === "Escape") { closeModal(); calClose(); } });
 </script>
 </body>
