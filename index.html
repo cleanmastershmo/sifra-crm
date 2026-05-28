@@ -1023,7 +1023,22 @@ async function seedIfEmpty() {
 function initListeners() {
   if (useFirebase) {
     dbSub("pipeline", d => {
-      S.pipeline = d;
+      // Auto-dedup: same empresa with multiple docs -> keep most recently active
+      const byEmp = {};
+      d.forEach(p => {
+        const key = (p.empresa||"unknown").trim().toLowerCase();
+        if (!byEmp[key]) { byEmp[key] = p; }
+        else {
+          const prev = byEmp[key];
+          const tP   = new Date(p.ultimaActividad||p.createdAt||0).getTime();
+          const tPrev= new Date(prev.ultimaActividad||prev.createdAt||0).getTime();
+          const keep = tP >= tPrev ? p : prev;
+          const del  = tP >= tPrev ? prev : p;
+          byEmp[key] = keep;
+          try { db.collection("pipeline").doc(del.id).delete(); } catch(e){}
+        }
+      });
+      S.pipeline = Object.values(byEmp);
       if (window._blockPipelineRefresh) return;
       refreshAll();
     });
@@ -1210,7 +1225,12 @@ function rPipeline() {
   const city = document.getElementById("ps-city")?.value||"";
   const prod = document.getElementById("ps-prod")?.value||"";
 
-  const filtered = S.pipeline.filter(p => {
+  // Dedup by ID as safety net
+  const _seen = new Set();
+  const _uniq = S.pipeline.filter(p => {
+    if (_seen.has(p.id)) return false; _seen.add(p.id); return true;
+  });
+  const filtered = _uniq.filter(p => {
     const ms = !q    || (p.empresa||"").toLowerCase().includes(q) || (p.contacto||"").toLowerCase().includes(q);
     const mt = !temp || p.temperatura === temp;
     const mc = !city || (p.ciudad||"").includes(city);
