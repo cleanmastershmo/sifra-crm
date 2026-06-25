@@ -1695,6 +1695,7 @@ function initListeners() {
         || incoming.length >= Math.floor(prevLen * 0.5);
       if (incoming.length > 0 && acceptable) {
         S.pipeline = incoming;
+        window._pipelineLastKnownGood = incoming.slice(); // update backup
       } else if (incoming.length === 0 && prevLen === 0) {
         S.pipeline = incoming; // first load: genuinely empty
       } else if (!acceptable) {
@@ -1717,11 +1718,16 @@ function initListeners() {
         });
       }
       S.visitas = d.filter(v => v.empresa && v.empresa !== "undefined");
-      // If contacto edit is in-flight, skip re-render to avoid wiping DOM
-      if (window._blockReporteRefresh) return;
+      // Skip re-render if pipeline card move is in progress OR reporte is being edited
+      if (window._pipelineLock || window._blockReporteRefresh) return;
       refreshAll();
     });
-    dbSub("clientes", d => { S.clientes = d; refreshAll(); });
+    dbSub("clientes", d => {
+      S.clientes = d;
+      // Skip re-render if pipeline card move is in progress (avoids wipe race)
+      if (window._pipelineLock) return;
+      refreshAll();
+    });
     db.collection("config").doc("main").get().then(doc => {
       if (doc.exists) localStorage.setItem("sifra_crm_config", JSON.stringify(doc.data() || {}));
       refreshAll();
@@ -1986,6 +1992,20 @@ function rDashboard() {
 // PIPELINE KANBAN
 // ============================================================
 function rPipeline() {
+  // ── LAST-RESORT ANTI-WIPE GUARD ──────────────────────────────────────────
+  // If S.pipeline is unexpectedly empty but we rendered good data recently,
+  // restore from the last-known-good snapshot to prevent a blank board.
+  // This is a safety net — the primary protection is _pipelineLock.
+  if (S.pipeline.length === 0 && window._pipelineLastKnownGood && window._pipelineLastKnownGood.length > 0) {
+    console.warn("[CRM] rPipeline: S.pipeline is empty — restoring from backup (" + window._pipelineLastKnownGood.length + " records)");
+    S.pipeline = window._pipelineLastKnownGood.slice(); // restore copy
+  }
+  // Snapshot the good state so we can recover from it on the next call if needed
+  if (S.pipeline.length > 0) {
+    window._pipelineLastKnownGood = S.pipeline.slice();
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const _pipeAll = filterByVendedor(S.pipeline, "pipe-vend-filter");
   const q    = (document.getElementById("ps-q")?.value||"").toLowerCase();
   const temp = document.getElementById("ps-temp")?.value||"";
@@ -3667,20 +3687,42 @@ async function dndDropOnCard(e, targetCardId, targetEtapa) {
     rPipeline();
   } else {
     // ── Different column: move + place at specific position ──
+    // Use same lock+optimistic pattern as moverEtapa to prevent board-wipe bug
+    window._pipelineLock = true;
+    window._pipelineBuffered = null;
     const prevEtapa = prospect.etapa;
-    await dbUpd("pipeline", id, { etapa: targetEtapa, ultimaActividad: today() });
-    logHistorial(id, prospect.empresa, "etapa", prevEtapa, targetEtapa, "");
-    lsSync("pipeline");
-    // Update orders
-    setColOrder(prevEtapa, getColOrder(prevEtapa).filter(x => x !== id));
-    const newOrd = getColOrder(targetEtapa).filter(x => x !== id);
-    const tIdx = newOrd.indexOf(targetCardId);
-    if (tIdx < 0) newOrd.push(id);
-    else if (before) newOrd.splice(tIdx, 0, id);
-    else             newOrd.splice(tIdx + 1, 0, id);
-    setColOrder(targetEtapa, newOrd);
-    toast(`Movido a ${ETAPAS.find(x=>x.id===targetEtapa)?.label||targetEtapa}`, "info");
-    updateBadges();
+    try {
+      // Optimistic UI: update in-memory state BEFORE the async Firestore write
+      prospect.etapa = targetEtapa;
+      prospect.ultimaActividad = today();
+      setColOrder(prevEtapa, getColOrder(prevEtapa).filter(x => x !== id));
+      const newOrd = getColOrder(targetEtapa).filter(x => x !== id);
+      const tIdx = newOrd.indexOf(targetCardId);
+      if (tIdx < 0) newOrd.push(id);
+      else if (before) newOrd.splice(tIdx, 0, id);
+      else             newOrd.splice(tIdx + 1, 0, id);
+      setColOrder(targetEtapa, newOrd);
+      rPipeline(); // instant visual update
+      updateBadges();
+      await dbUpd("pipeline", id, { etapa: targetEtapa, ultimaActividad: today() });
+      logHistorial(id, prospect.empresa, "etapa", prevEtapa, targetEtapa, "");
+      toast(`Movido a ${ETAPAS.find(x=>x.id===targetEtapa)?.label||targetEtapa}`, "info");
+    } catch(err) {
+      // Revert on error
+      prospect.etapa = prevEtapa;
+      rPipeline();
+      toast("Error al mover prospecto", "error");
+    } finally {
+      // Release lock and apply any buffered Firestore snapshot
+      window._pipelineLock = false;
+      if (window._pipelineBuffered && window._pipelineBuffered.length > 0) {
+        const buf = window._pipelineBuffered;
+        window._pipelineBuffered = null;
+        const prevLen = S.pipeline.length;
+        const ok = prevLen === 0 || buf.length >= prevLen - 2 || buf.length >= Math.floor(prevLen * 0.5);
+        if (ok) { S.pipeline = buf; refreshAll(); }
+      }
+    }
     if (targetEtapa === "6-Cerrado") {
       const p = S.pipeline.find(x => x.id === id);
       if (p && confirm(`🎯 Prospecto ganado. ¿Agregar "${p.empresa}" como cliente activo?`)) {
@@ -3688,7 +3730,6 @@ async function dndDropOnCard(e, targetCardId, targetEtapa) {
         toast("Cliente agregado ✓","success");
       }
     }
-    rPipeline();
   }
   _dropBefore = true;
 }
