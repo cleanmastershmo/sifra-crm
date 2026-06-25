@@ -1274,38 +1274,82 @@ td{padding:8px 10px}
   }
   localStorage.setItem("sifra_crm_version", CRM_VERSION);
 
-  // ── MIGRACIÓN AUTOMÁTICA de datos del CRM anterior ────────────────────
-  // Si el CRM viejo guardó datos bajo claves SIN el prefijo "sifra_crm_",
-  // los copiamos a las claves nuevas para que no se pierdan al actualizar.
-  if (!storedVersion) {
-    const OLD_KEY_MAPS = [
-      { old: "pipeline",     nw: "sifra_crm_pipeline"  },
-      { old: "clientes",     nw: "sifra_crm_clientes"  },
-      { old: "visitas",      nw: "sifra_crm_visitas"   },
-      { old: "historial",    nw: "sifra_crm_historial" },
-      { old: "prospectos",   nw: "sifra_crm_pipeline"  },
-      { old: "seguimiento",  nw: "sifra_crm_visitas"   },
-      { old: "crm_pipeline", nw: "sifra_crm_pipeline"  },
-      { old: "crm_clientes", nw: "sifra_crm_clientes"  },
-      { old: "crm_visitas",  nw: "sifra_crm_visitas"   },
-    ];
-    let migrated = 0;
-    OLD_KEY_MAPS.forEach(function(map) {
-      try {
-        const oldData = localStorage.getItem(map.old);
-        if (oldData && oldData !== "[]" && oldData !== "null") {
-          const newData = localStorage.getItem(map.nw);
-          if (!newData || newData === "[]") {
-            localStorage.setItem(map.nw, oldData);
-            migrated++;
-            console.log("Sifra CRM — migrado:", map.old, "->", map.nw);
-          }
+  // ── MIGRACIÓN AUTOMÁTICA de datos del CRM anterior (cmhmo_* → sifra_crm_*) ──
+  // Se ejecuta una sola vez (controlado por sifra_crm_cmhmo_migrated).
+  // Detecta los datos del CRM viejo (prefijo cmhmo_) y los convierte al
+  // formato del nuevo CRM con el prefijo sifra_crm_.
+  if (!localStorage.getItem("sifra_crm_cmhmo_migrated")) {
+    try {
+      // ── Pipeline: cmhmo_sols → sifra_crm_pipeline ──────────────────
+      const rawSols = localStorage.getItem("cmhmo_sols");
+      if (rawSols && rawSols.length > 5) {
+        const hasPipeline = localStorage.getItem("sifra_crm_pipeline");
+        if (!hasPipeline || hasPipeline === "[]") {
+          var sols = JSON.parse(rawSols);
+          var pipeline = sols.map(function(s) {
+            return {
+              id:               String(s.id || s._id || Date.now()),
+              empresa:          s.empresa || s.nombre_empresa || s.razon || s.razonSocial || s.nombre || "",
+              contacto:         s.contacto || s.nombre_contacto || s.responsable || "",
+              cargo:            s.cargo || s.puesto || "",
+              telefono:         s.telefono || s.tel || s.cel || s.phone || "",
+              email:            s.email || s.correo || "",
+              ciudad:           s.ciudad || s.sucursal || "Hermosillo",
+              productos:        s.productos || s.producto || s.servicio || s.rubro || "Otro",
+              temperatura:      s.temperatura || s.temp || "Frio",
+              etapa:            s.etapa || s.stage || s.estado || "1-Prospecto",
+              potencialMensual: s.potencialMensual || s.monto || s.valor || s.importe || 0,
+              siguienteAccion:  s.siguienteAccion || s.accion || s.tarea || s.nextAction || "",
+              notas:            s.notas || s.comentarios || s.observaciones || "",
+              vendedor:         s.vendedor || s.asesor || s.responsable || "",
+              ultimaActividad:  s.ultimaActividad || s.fechaActualizacion || s.updatedAt || new Date().toISOString().slice(0,10),
+              createdAt:        s.createdAt || s.fechaCreacion || new Date().toISOString(),
+            };
+          });
+          localStorage.setItem("sifra_crm_pipeline", JSON.stringify(pipeline));
+          console.log("Sifra CRM — migrados", pipeline.length, "prospectos de cmhmo_sols");
         }
-      } catch(e) {}
-    });
-    if (migrated > 0) {
-      console.log("Sifra CRM — migracion completa:", migrated, "colecciones importadas del CRM anterior.");
+      }
+
+      // ── Clientes: cmhmo_clientes → sifra_crm_clientes ──────────────
+      const rawCli = localStorage.getItem("cmhmo_clientes");
+      if (rawCli && rawCli.length > 5) {
+        const hasCli = localStorage.getItem("sifra_crm_clientes");
+        if (!hasCli || hasCli === "[]") {
+          var oldCli = JSON.parse(rawCli);
+          var clientes = oldCli.map(function(c) {
+            return {
+              id:       String(c.id || c._id || Date.now()),
+              empresa:  c.empresa || c.nombre_empresa || c.razon || c.nombre || "",
+              contacto: c.contacto || c.nombre || c.nombre_contacto || "",
+              cargo:    c.cargo || c.puesto || "",
+              telefono: c.telefono || c.tel || c.cel || "",
+              email:    c.email || c.correo || "",
+              ciudad:   c.ciudad || c.sucursal || "Hermosillo",
+              giro:     c.giro || c.industria || c.sector || "",
+              notas:    c.notas || c.comentarios || "",
+              createdAt: c.createdAt || new Date().toISOString(),
+            };
+          });
+          localStorage.setItem("sifra_crm_clientes", JSON.stringify(clientes));
+          console.log("Sifra CRM — migrados", clientes.length, "clientes de cmhmo_clientes");
+        }
+      }
+
+      // ── Visitas/Seguimiento ─────────────────────────────────────────
+      const rawSeg = localStorage.getItem("cmhmo_seguimiento") || localStorage.getItem("cmhmo_visitas");
+      if (rawSeg && rawSeg.length > 5) {
+        const hasVis = localStorage.getItem("sifra_crm_visitas");
+        if (!hasVis || hasVis === "[]") {
+          localStorage.setItem("sifra_crm_visitas", rawSeg);
+          console.log("Sifra CRM — migradas visitas/seguimiento");
+        }
+      }
+    } catch(eM) {
+      console.warn("Sifra CRM — error en migración cmhmo:", eM);
     }
+    localStorage.setItem("sifra_crm_cmhmo_migrated", "1");
+    console.log("Sifra CRM — migración cmhmo completada.");
   }
 })();
 // ============================================================
