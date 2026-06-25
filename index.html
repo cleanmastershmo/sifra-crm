@@ -1289,8 +1289,8 @@ td{padding:8px 10px}
           var pipeline = sols.map(function(s) {
             return {
               id:               String(s.id || s._id || Date.now()),
-              empresa:          s.empresa || s.nombre_empresa || s.razon || s.razonSocial || s.nombre || "",
-              contacto:         s.contacto || s.nombre_contacto || s.responsable || "",
+              empresa:          s.empresa || s.nombre_empresa || s.razon || s.razonSocial || s.cliente || s.account || s.company || s.compania || s.organizacion || s.nombreEmpresa || s.razon_social || s.prospecto || "",
+              contacto:         s.contacto || s.nombre_contacto || s.responsable || s.nombre || s.nombreContacto || "",
               cargo:            s.cargo || s.puesto || "",
               telefono:         s.telefono || s.tel || s.cel || s.phone || "",
               email:            s.email || s.correo || "",
@@ -1428,7 +1428,12 @@ async function dbUpd(c, id, d) {
       await db.collection(c).doc(id).update(d);
     } catch(e) {
       if (e.code === "not-found") {
-        await db.collection(c).doc(id).set({...d, createdAt: firebase.firestore.FieldValue.serverTimestamp()}, { merge: true });
+        // Doc doesn't exist in Firestore yet — use the full in-memory record as base
+        // so we don't lose existing fields (empresa, contacto, etc.) when doing partial updates.
+        const existing = (S[c] || []).find(r => r.id === id) || {};
+        const fullData = { ...existing, ...d };
+        delete fullData.id; // Firestore uses doc ID, not a field
+        await db.collection(c).doc(id).set({...fullData, createdAt: firebase.firestore.FieldValue.serverTimestamp()}, { merge: true });
       } else {
         if (c === "pipeline") window._blockPipelineRefresh = false;
         throw e;
@@ -1551,6 +1556,63 @@ async function seedIfEmpty() {
   // Plantilla limpia: no carga prospectos, clientes, visitas ni historial de ejemplo.
   return;
 }
+
+// ── RECOVERY: patch blank-empresa records in Firestore using cmhmo_sols ──────
+// Runs once (guarded by sifra_crm_empresa_recovery). For each Firestore pipeline
+// record with empty empresa, tries to find the matching original cmhmo_sols entry
+// by contacto/telefono/id and patches the empresa field.
+async function repairBlankEmpresa() {
+  if (!useFirebase) return;
+  if (localStorage.getItem("sifra_crm_empresa_recovery")) return;
+  try {
+    const rawSols = localStorage.getItem("cmhmo_sols");
+    if (!rawSols) { localStorage.setItem("sifra_crm_empresa_recovery","1"); return; }
+    const sols = JSON.parse(rawSols);
+
+    // Build lookup maps from original data using all possible empresa field names
+    function getEmpresa(s) {
+      return s.empresa || s.nombre_empresa || s.razon || s.razonSocial ||
+             s.cliente || s.account || s.company || s.compania ||
+             s.organizacion || s.nombreEmpresa || s.razon_social || s.prospecto || "";
+    }
+    const byId  = {};
+    const byTel = {};
+    const byCon = {};
+    sols.forEach(function(s) {
+      const emp = getEmpresa(s);
+      if (!emp) return;
+      if (s.id)       byId[String(s.id)] = emp;
+      const tel = s.telefono || s.tel || s.cel || "";
+      if (tel)        byTel[tel.replace(/\D/g,"").slice(-10)] = emp;
+      const con = s.contacto || s.nombre_contacto || s.nombre || "";
+      if (con)        byCon[con.trim().toLowerCase()] = emp;
+    });
+
+    const snap = await db.collection("pipeline").get();
+    const batch = db.batch();
+    let patched = 0;
+    snap.docs.forEach(function(doc) {
+      const data = doc.data();
+      if (data.empresa && data.empresa.trim()) return; // already has empresa
+      let emp = "";
+      // Try matching by original id stored as field, or contacto, or telefono
+      if (!emp && data._srcId)  emp = byId[String(data._srcId)] || "";
+      const tel = (data.telefono || "").replace(/\D/g,"").slice(-10);
+      if (!emp && tel)          emp = byTel[tel] || "";
+      const con = (data.contacto || "").trim().toLowerCase();
+      if (!emp && con)          emp = byCon[con] || "";
+      if (emp) {
+        batch.update(doc.ref, { empresa: emp });
+        patched++;
+      }
+    });
+    if (patched > 0) await batch.commit();
+    console.log("Sifra CRM — empresa recovery: patched", patched, "records");
+  } catch(e) {
+    console.warn("repairBlankEmpresa error:", e);
+  }
+  localStorage.setItem("sifra_crm_empresa_recovery", "1");
+}
 // ============================================================
 // LISTENERS// ============================================================
 function initListeners() {
@@ -1581,6 +1643,11 @@ function initListeners() {
       if (doc.exists) localStorage.setItem("sifra_crm_config", JSON.stringify(doc.data() || {}));
       refreshAll();
     }).catch(e => console.error("Config load error:", e));
+    // Run recovery functions once in background (no UI blocking)
+    setTimeout(function() {
+      migrateFromLocalStorage().catch(()=>{});
+      repairBlankEmpresa().catch(()=>{});
+    }, 2000);
   } else {
     S.pipeline  = LS.get("pipeline");
     S.visitas   = LS.get("visitas");
