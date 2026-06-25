@@ -1412,39 +1412,42 @@ const LS = {
 
 async function dbAdd(c, d) {
   if (useFirebase) {
-    if (c === "pipeline") window._blockPipelineRefresh = true;
     const r = await db.collection(c).add({...d, createdAt: firebase.firestore.FieldValue.serverTimestamp()});
-    await fbRefresh(c);
-    if (c === "pipeline") setTimeout(() => { window._blockPipelineRefresh = false; }, 1500);
+    // Optimistic: add to local state immediately (onSnapshot will confirm)
+    const newRec = {...d, id: r.id, createdAt: new Date().toISOString()};
+    if (!S[c]) S[c] = [];
+    S[c].unshift(newRec);
     return r.id;
   }
   const rec = LS.add(c, d); lsSync(c); return rec.id;
 }
 async function dbUpd(c, id, d) {
+  // Optimistic: update local state immediately for instant UI feedback.
+  // onSnapshot will confirm the final state from Firestore shortly after.
+  if (S[c]) {
+    const _idx = S[c].findIndex(r => r.id === id);
+    if (_idx >= 0) S[c][_idx] = { ...S[c][_idx], ...d };
+  }
+  LS.upd(c, id, d); // keep localStorage cache in sync
+
   if (useFirebase) {
-    // Block onSnapshot re-render for this collection during write
-    if (c === "pipeline") { window._blockPipelineRefresh = true; }
     try {
       await db.collection(c).doc(id).update(d);
     } catch(e) {
       if (e.code === "not-found") {
-        // Doc doesn't exist in Firestore yet — use the full in-memory record as base
-        // so we don't lose existing fields (empresa, contacto, etc.) when doing partial updates.
+        // Doc missing in Firestore — write the full record so no fields are lost
         const existing = (S[c] || []).find(r => r.id === id) || {};
         const fullData = { ...existing, ...d };
-        delete fullData.id; // Firestore uses doc ID, not a field
-        await db.collection(c).doc(id).set({...fullData, createdAt: firebase.firestore.FieldValue.serverTimestamp()}, { merge: true });
+        delete fullData.id;
+        await db.collection(c).doc(id).set({...fullData}, { merge: true });
       } else {
-        if (c === "pipeline") window._blockPipelineRefresh = false;
-        throw e;
+        console.error("dbUpd error:", c, id, e);
       }
     }
-    await fbRefresh(c);
-    if (c === "pipeline") {
-      // Unblock after short delay to let onSnapshot settle
-      setTimeout(() => { window._blockPipelineRefresh = false; }, 1500);
-    }
-  } else { LS.upd(c, id, d); lsSync(c); }
+    // DO NOT call fbRefresh here — it caused race conditions where
+    // S.pipeline was overwritten with a stale/empty Firestore snapshot.
+    // The onSnapshot listener in initListeners handles real-time sync.
+  }
 }
 async function dbDel(c, id) {
   if (useFirebase) {
@@ -1524,32 +1527,48 @@ const PROYECTO_ESTATUS = ["Pendiente OC","En proceso","Arte / Pre-prensa","Produ
 // ============================================================
 async function migrateFromLocalStorage() {
   if (!useFirebase) return;
-  const marker = "sifra_crm_firestore_seeded_v1";
+  // v2 marker: forces re-seed with fixed batch-set logic (IDs preserved)
+  const marker = "sifra_crm_firestore_seeded_v2";
   if (localStorage.getItem(marker) === "1") return;
-
-  const snap = await db.collection("pipeline").limit(1).get();
-  if (!snap.empty) {
+  // Remove old v1 marker so this always runs once with the new logic
+  localStorage.removeItem("sifra_crm_firestore_seeded_v1");
+  // Only seed if localStorage has data
+  const localPipe = LS.get("pipeline");
+  if (!localPipe.length) {
     localStorage.setItem(marker, "1");
     return;
   }
 
+  // Use doc(id).set() — NOT add() — so localStorage IDs are preserved in Firestore.
+  // This ensures dbUpd("pipeline", localId, ...) can find the document later.
   const collections = ["pipeline", "clientes", "visitas", "historial"];
   for (const c of collections) {
     const rows = LS.get(c);
-    for (const row of rows) {
-      const { id, ...data } = row;
-      await db.collection(c).add({
-        ...data,
-        createdAt: data.createdAt || firebase.firestore.FieldValue.serverTimestamp()
+    if (!rows.length) continue;
+    // Write in batches of 400 (Firestore batch limit is 500)
+    const BATCH_SIZE = 400;
+    for (let start = 0; start < rows.length; start += BATCH_SIZE) {
+      const batch = db.batch();
+      const chunk = rows.slice(start, start + BATCH_SIZE);
+      chunk.forEach(function(row) {
+        const { id, ...data } = row;
+        if (!id) return;
+        const ref = db.collection(c).doc(String(id));
+        batch.set(ref, {
+          ...data,
+          createdAt: data.createdAt || new Date().toISOString()
+        }, { merge: true });
       });
+      await batch.commit();
     }
+    console.log("Sifra CRM — seeded", rows.length, "records into", c);
   }
   const cfg = getConfig();
   if (Object.keys(cfg).length) {
     await db.collection("config").doc("main").set(cfg, { merge: true });
   }
   localStorage.setItem(marker, "1");
-  console.log("Datos locales migrados a Firestore");
+  console.log("Datos locales migrados a Firestore (IDs preservados)");
 }
 
 async function seedIfEmpty() {
@@ -1618,12 +1637,21 @@ async function repairBlankEmpresa() {
 function initListeners() {
   if (useFirebase) {
     dbSub("pipeline", d => {
-      // A client can have multiple opportunities/projects. Keep each Firestore doc by ID.
+      // Dedup by Firestore ID (each doc is unique; byId prevents phantom duplicates)
       const byId = {};
       d.forEach(p => { if (p && p.id) byId[p.id] = p; });
-      S.pipeline = Object.values(byId);
-      if (window._blockPipelineRefresh) return;
-      refreshAll();
+      const incoming = Object.values(byId);
+      // Only update S.pipeline if Firestore returned records.
+      // Guard against an empty snapshot overwriting an already-populated state
+      // (can happen briefly during concurrent writes in Firestore).
+      if (incoming.length > 0 || S.pipeline.length === 0) {
+        S.pipeline = incoming;
+      }
+      // Debounce re-render to avoid rapid successive renders during bulk writes
+      clearTimeout(window._pipelineDebounce);
+      window._pipelineDebounce = setTimeout(function() {
+        refreshAll();
+      }, 150);
     });
     dbSub("visitas",  d => {
       // Filter and auto-delete orphan docs (empty records from failed partial saves)
@@ -1998,23 +2026,38 @@ function rPipeline() {
 
 async function moverEtapa(id, etapa) {
   const prev = S.pipeline.find(x => x.id === id);
-  const etapaAnt = prev?.etapa || "";
-  await dbUpd("pipeline", id, { etapa, ultimaActividad: today() });
-  const lbl = ETAPAS.find(e => e.id === etapa)?.label || etapa;
-  toast(`Movido a ${lbl}`, "info");
-  if (etapaAnt !== etapa) {
-    logHistorial(id, prev?.empresa||"", "etapa", etapaAnt, etapa, "");
-    // Remove from old column order, append to end of new column
-    if (etapaAnt) {
-      const oldOrd = getColOrder(etapaAnt).filter(x => x !== id);
-      setColOrder(etapaAnt, oldOrd);
-    }
-    const newOrd = getColOrder(etapa).filter(x => x !== id);
-    newOrd.push(id);
-    setColOrder(etapa, newOrd);
+  if (!prev) return;
+  const etapaAnt = prev.etapa || "";
+  if (etapaAnt === etapa) return; // no change needed
+
+  // ── Optimistic UI: update local state BEFORE the async Firestore write ──
+  // This makes the card move instantly, with no flicker or empty-board state.
+  prev.etapa = etapa;
+  prev.ultimaActividad = today();
+  // Update column orders immediately in local config
+  if (etapaAnt) {
+    const oldOrd = getColOrder(etapaAnt).filter(x => x !== id);
+    setColOrder(etapaAnt, oldOrd);
   }
-  rPipeline();
+  const newOrd = getColOrder(etapa).filter(x => x !== id);
+  newOrd.push(id);
+  setColOrder(etapa, newOrd);
+  rPipeline(); // instant visual update
   updateBadges();
+
+  // ── Async Firestore write (does not block UI) ──
+  try {
+    await dbUpd("pipeline", id, { etapa, ultimaActividad: today() });
+    const lbl = ETAPAS.find(e => e.id === etapa)?.label || etapa;
+    toast(`Movido a ${lbl}`, "info");
+    logHistorial(id, prev.empresa||"", "etapa", etapaAnt, etapa, "");
+  } catch(e) {
+    // Revert on error
+    prev.etapa = etapaAnt; prev.ultimaActividad = today();
+    rPipeline();
+    toast("Error al mover prospecto", "error");
+    return;
+  }
   if (etapa === "6-Cerrado") {
     const p = S.pipeline.find(x => x.id === id);
     if (p && confirm(`🎯 Prospecto ganado. ¿Agregar "${p.empresa}" como cliente activo?`)) {
