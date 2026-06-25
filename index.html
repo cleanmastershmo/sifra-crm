@@ -182,7 +182,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .kcard-next{font-size:11px;color:var(--t3);margin-top:5px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kcard-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
 .kcard-monto{font-family:monospace;font-size:11px;color:var(--grn);font-weight:700}
-.kcard-actions{display:flex;gap:5px;margin-top:8px}
+.kcard-actions{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.kcard-actions .iEdit{flex:0 0 100%;width:100%;padding:5px 8px;font-size:11px;justify-content:center}
+.kcard-actions .iBtn:not(.iEdit){flex:1;min-width:26px;max-width:36px}
 .kcard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
 .kcard-vendor{font-size:9.5px;font-weight:700;color:var(--pur);background:var(--purD);border:1px solid rgba(151,71,255,.18);border-radius:10px;padding:2px 6px;line-height:1;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
 .kcard-date{font-size:10px;font-weight:700;color:var(--cyan);background:var(--cyanD);border:1px solid rgba(0,174,239,.18);border-radius:10px;padding:2px 6px;line-height:1;white-space:nowrap}
@@ -283,8 +285,8 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
   .fsec{grid-column:span 1}
   .main{padding:12px}
   .nav-tab span{display:none}
-  /* mobile touch targets */
-  .iBtn,.iEdit,.iDel{min-height:36px;min-width:36px;font-size:15px}
+  /* mobile touch targets — icon buttons only (Edit button is handled by kcard-actions CSS) */
+  .iBtn:not(.iEdit){min-height:34px;min-width:34px;font-size:14px}
   .kcard{padding:14px}
   .kanban-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .kcol{min-width:270px}
@@ -1580,84 +1582,126 @@ async function seedIfEmpty() {
 // by contacto/telefono/id and patches the empresa field.
 async function repairBlankEmpresa() {
   if (!useFirebase) return;
-  if (localStorage.getItem("sifra_crm_empresa_recovery")) return;
+  // v2 guard — reset "v1" flag so this improved version always runs once
+  if (localStorage.getItem("sifra_crm_empresa_recovery_v2")) return;
   try {
     const rawSols = localStorage.getItem("cmhmo_sols");
-    if (!rawSols) { localStorage.setItem("sifra_crm_empresa_recovery","1"); return; }
+    if (!rawSols) { localStorage.setItem("sifra_crm_empresa_recovery_v2","1"); return; }
     const sols = JSON.parse(rawSols);
 
-    // Build lookup maps from original data using all possible empresa field names
-    function getEmpresa(s) {
-      return s.empresa || s.nombre_empresa || s.razon || s.razonSocial ||
-             s.cliente || s.account || s.company || s.compania ||
-             s.organizacion || s.nombreEmpresa || s.razon_social || s.prospecto || "";
+    // Exhaustive empresa extractor: tries all known field names, then scans
+    // every string field for the best candidate (catches any custom field name).
+    const SKIP_FIELDS = new Set([
+      "id","createdat","updatedat","fecha","fechamodificacion",
+      "telefono","tel","cel","celular","mobile","phone",
+      "email","correo","mail",
+      "etapa","stage","estado","status",
+      "temperatura","ciudad","vendedor","contacto","cargo","puesto",
+      "productos","producto","necesidad","proximopaso","fuente","giro",
+      "notas","nota","notes","observaciones","comentarios",
+      "ultimaactividad","fechaproxpaso","potencialmensual","monto"
+    ]);
+    function extractEmpresa(s) {
+      // 1. Known field names first
+      const known = s.empresa || s.nombre_empresa || s.razon || s.razonSocial ||
+                    s.cliente || s.account || s.company || s.compania ||
+                    s.organizacion || s.nombreEmpresa || s.razon_social ||
+                    s.prospecto || s.entidad || s.institucion ||
+                    s.Empresa || s.Nombre_Empresa || s.EMPRESA || "";
+      if (known) return known;
+      // 2. Exhaustive scan: any string field that looks like a company name
+      let best = "";
+      for (const [key, val] of Object.entries(s)) {
+        if (typeof val !== "string") continue;
+        if (SKIP_FIELDS.has(key.toLowerCase())) continue;
+        const v = val.trim();
+        if (!v || v.length < 2 || v.length > 120) continue;
+        if (v.includes("@") || v.startsWith("http")) continue; // email/url
+        if (/^\d[\d\s\-().+]{5,}$/.test(v)) continue; // phone
+        if (/^\d{4}-\d{2}-\d{2}/.test(v) || /^\d{2}\/\d{2}\/\d{4}/.test(v)) continue; // date
+        // Prefer the longest plausible candidate
+        if (v.length > best.length) best = v;
+      }
+      return best;
     }
+
+    // Build lookup maps (by Firestore doc ID, by phone, by contact name)
     const byId  = {};
     const byTel = {};
     const byCon = {};
     sols.forEach(function(s) {
-      const emp = getEmpresa(s);
+      const emp = extractEmpresa(s);
       if (!emp) return;
-      if (s.id)       byId[String(s.id)] = emp;
-      const tel = s.telefono || s.tel || s.cel || "";
-      if (tel)        byTel[tel.replace(/\D/g,"").slice(-10)] = emp;
-      const con = s.contacto || s.nombre_contacto || s.nombre || "";
-      if (con)        byCon[con.trim().toLowerCase()] = emp;
+      if (s.id) byId[String(s.id)] = emp;
+      const tel = (s.telefono || s.tel || s.cel || "").replace(/\D/g,"").slice(-10);
+      if (tel)  byTel[tel] = emp;
+      const con = (s.contacto || s.nombre_contacto || s.nombre || "").trim().toLowerCase();
+      if (con)  byCon[con] = emp;
     });
 
     const snap = await db.collection("pipeline").get();
     const batch = db.batch();
     let patched = 0;
+    let stillBlank = 0;
     snap.docs.forEach(function(doc) {
       const data = doc.data();
-      if (data.empresa && data.empresa.trim()) return; // already has empresa
+      if (data.empresa && data.empresa.trim()) return; // already has empresa — skip
       let emp = "";
-      // Try matching by original id stored as field, or contacto, or telefono
-      if (!emp && data._srcId)  emp = byId[String(data._srcId)] || "";
+      // Match priority: doc ID → phone → contact name
+      if (!emp) emp = byId[doc.id] || "";
+      if (!emp && data._srcId) emp = byId[String(data._srcId)] || "";
       const tel = (data.telefono || "").replace(/\D/g,"").slice(-10);
-      if (!emp && tel)          emp = byTel[tel] || "";
+      if (!emp && tel) emp = byTel[tel] || "";
       const con = (data.contacto || "").trim().toLowerCase();
-      if (!emp && con)          emp = byCon[con] || "";
+      if (!emp && con) emp = byCon[con] || "";
       if (emp) {
         batch.update(doc.ref, { empresa: emp });
         patched++;
+      } else {
+        stillBlank++;
+        console.warn("[CRM] blank empresa — could not recover:", doc.id, JSON.stringify(data));
       }
     });
     if (patched > 0) await batch.commit();
-    console.log("Sifra CRM — empresa recovery: patched", patched, "records");
+    console.log(`Sifra CRM — empresa recovery v2: patched ${patched}, still blank: ${stillBlank}`);
   } catch(e) {
     console.warn("repairBlankEmpresa error:", e);
   }
-  localStorage.setItem("sifra_crm_empresa_recovery", "1");
+  localStorage.setItem("sifra_crm_empresa_recovery_v2", "1");
 }
 // ============================================================
 // LISTENERS// ============================================================
 function initListeners() {
   if (useFirebase) {
     dbSub("pipeline", d => {
-      // Dedup by Firestore ID (each doc is unique; byId prevents phantom duplicates)
+      // Dedup by Firestore ID
       const byId = {};
       d.forEach(p => { if (p && p.id) byId[p.id] = p; });
       const incoming = Object.values(byId);
       const prevLen  = S.pipeline.length;
-      // Anti-wipe guard: only replace S.pipeline when the incoming snapshot looks
-      // plausible. We allow normal growth/deletions (up to prevLen items at once)
-      // but block catastrophically small snapshots that Firestore can emit briefly
-      // during concurrent writes or reconnections.
-      //
-      //  • If we already have data: only accept if incoming has ≥ 50% of current
-      //    OR at most 2 fewer (covers drag-move + delete-one scenarios).
-      //  • If current pipeline is empty: always accept (first load).
+
+      // ── MOVE LOCK: if a card move is in progress, buffer the snapshot ──
+      // moverEtapa sets window._pipelineLock = true before any async write.
+      // This prevents Firestore's onSnapshot from wiping the optimistic board state
+      // mid-move. The buffered snapshot is applied after the move finishes.
+      if (window._pipelineLock) {
+        window._pipelineBuffered = incoming; // keep latest snapshot
+        return; // do NOT update S.pipeline or re-render right now
+      }
+
+      // ── WIPE GUARD: reject suspiciously small snapshots ──
       const acceptable = prevLen === 0
         || incoming.length >= prevLen - 2
         || incoming.length >= Math.floor(prevLen * 0.5);
       if (incoming.length > 0 && acceptable) {
         S.pipeline = incoming;
       } else if (incoming.length === 0 && prevLen === 0) {
-        S.pipeline = incoming; // truly empty on first load
+        S.pipeline = incoming; // first load: genuinely empty
       } else if (!acceptable) {
-        console.warn("[CRM] Pipeline snapshot rejected (wipe-guard):", incoming.length, "vs current", prevLen);
+        console.warn("[CRM] Pipeline snapshot rejected (wipe-guard):", incoming.length, "vs", prevLen);
+        return;
       }
+
       // Debounce re-render to avoid rapid successive renders during bulk writes
       clearTimeout(window._pipelineDebounce);
       window._pipelineDebounce = setTimeout(function() {
@@ -2007,7 +2051,7 @@ function rPipeline() {
                 </div>
 
                 <div class="kcard-actions">
-                  <button class="iBtn iEdit"  onclick="editItem('pipeline','${p.id}')"   title="Editar prospecto" style="flex:1;width:auto;padding:4px 8px;font-size:11px">✏️ Editar</button>
+                  <button class="iBtn iEdit"  onclick="editItem('pipeline','${p.id}')"   title="Editar prospecto">✏️ Editar</button>
                   <button class="iBtn iSeg"   onclick="openQuickNote('${p.id}')"         title="Nota rápida">📝</button>
                   <button class="iBtn iVisit" onclick="addVisita('${p.id}')"              title="Registrar visita">🚗</button>
                   <button class="iBtn iMail" onclick="emailMessage('${p.id}')" title="${p.email?'Correo Outlook':'Sin correo'}" ${p.email?'':' style=\"opacity:.4\"'}>📧</button>
@@ -2036,34 +2080,51 @@ async function moverEtapa(id, etapa) {
   const etapaAnt = prev.etapa || "";
   if (etapaAnt === etapa) return; // no change needed
 
-  // ── Optimistic UI: update local state BEFORE the async Firestore write ──
-  // This makes the card move instantly, with no flicker or empty-board state.
-  prev.etapa = etapa;
-  prev.ultimaActividad = today();
-  // Update column orders immediately in local config
-  if (etapaAnt) {
-    const oldOrd = getColOrder(etapaAnt).filter(x => x !== id);
-    setColOrder(etapaAnt, oldOrd);
-  }
-  const newOrd = getColOrder(etapa).filter(x => x !== id);
-  newOrd.push(id);
-  setColOrder(etapa, newOrd);
-  rPipeline(); // instant visual update
-  updateBadges();
+  // ── LOCK: block onSnapshot from re-rendering while this async move is in flight ──
+  // Without this, Firestore's onSnapshot fires mid-await and overwrites the optimistic
+  // board state, causing every card to disappear until the next F5.
+  window._pipelineLock = true;
+  window._pipelineBuffered = null;
 
-  // ── Async Firestore write (does not block UI) ──
   try {
+    // ── Optimistic UI: update local state BEFORE the async Firestore write ──
+    prev.etapa = etapa;
+    prev.ultimaActividad = today();
+    if (etapaAnt) {
+      const oldOrd = getColOrder(etapaAnt).filter(x => x !== id);
+      setColOrder(etapaAnt, oldOrd);
+    }
+    const newOrd = getColOrder(etapa).filter(x => x !== id);
+    newOrd.push(id);
+    setColOrder(etapa, newOrd);
+    rPipeline(); // instant visual update
+    updateBadges();
+
+    // ── Write to Firestore ──
     await dbUpd("pipeline", id, { etapa, ultimaActividad: today() });
     const lbl = ETAPAS.find(e => e.id === etapa)?.label || etapa;
     toast(`Movido a ${lbl}`, "info");
     logHistorial(id, prev.empresa||"", "etapa", etapaAnt, etapa, "");
+
   } catch(e) {
     // Revert on error
     prev.etapa = etapaAnt; prev.ultimaActividad = today();
     rPipeline();
     toast("Error al mover prospecto", "error");
     return;
+  } finally {
+    // ── UNLOCK: release the lock and apply any buffered Firestore snapshot ──
+    window._pipelineLock = false;
+    if (window._pipelineBuffered && window._pipelineBuffered.length > 0) {
+      // A snapshot arrived while we were locked — apply it now (server confirmed state)
+      const buf = window._pipelineBuffered;
+      window._pipelineBuffered = null;
+      const prevLen = S.pipeline.length;
+      const ok = prevLen === 0 || buf.length >= prevLen - 2 || buf.length >= Math.floor(prevLen * 0.5);
+      if (ok) { S.pipeline = buf; refreshAll(); }
+    }
   }
+
   if (etapa === "6-Cerrado") {
     const p = S.pipeline.find(x => x.id === id);
     if (p && confirm(`🎯 Prospecto ganado. ¿Agregar "${p.empresa}" como cliente activo?`)) {
