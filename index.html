@@ -186,12 +186,9 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .kcard-head{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}
 .kcard-vendor{font-size:9.5px;font-weight:700;color:var(--pur);background:var(--purD);border:1px solid rgba(151,71,255,.18);border-radius:10px;padding:2px 6px;line-height:1;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
 .kcard-date{font-size:10px;font-weight:700;color:var(--cyan);background:var(--cyanD);border:1px solid rgba(0,174,239,.18);border-radius:10px;padding:2px 6px;line-height:1;white-space:nowrap}
-.kcard-move{width:100%;margin-top:7px;padding:5px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:4px;color:var(--t2);font-size:11px;cursor:pointer;font-family:'Inter',sans-serif}
-.kcard-move:focus{outline:none;border-color:var(--cyan)}
 .kcard[draggable=true]{touch-action:none;-webkit-user-select:none;user-select:none}
 .kcard.drag-ghost{opacity:.45;transform:scale(.97)}
 .kcards.drag-over{background:rgba(0,174,239,.07);border-radius:8px;outline:2px dashed var(--cyan)}
-.kcard-move:hover{border-color:var(--cyan)}
 
 /* Temp badges */
 .tbadge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.3px}
@@ -288,7 +285,6 @@ td{padding:10px 14px;font-size:13px;vertical-align:middle}
   .nav-tab span{display:none}
   /* mobile touch targets */
   .iBtn,.iEdit,.iDel{min-height:36px;min-width:36px;font-size:15px}
-  .kcard-move{padding:8px 10px;font-size:13px;min-height:38px}
   .kcard{padding:14px}
   .kanban-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .kcol{min-width:270px}
@@ -1451,10 +1447,12 @@ async function dbUpd(c, id, d) {
 }
 async function dbDel(c, id) {
   if (useFirebase) {
-    if (c === "pipeline") window._blockPipelineRefresh = true;
+    // Optimistic: remove from local state immediately so UI updates without waiting
+    if (S[c]) S[c] = S[c].filter(r => r.id !== id);
+    LS.del(c, id);
     await db.collection(c).doc(id).delete();
-    await fbRefresh(c);
-    if (c === "pipeline") setTimeout(() => { window._blockPipelineRefresh = false; }, 1500);
+    // onSnapshot handles the authoritative sync — no fbRefresh needed
+    // (fbRefresh caused race conditions where a stale get() wiped S.pipeline)
   } else { LS.del(c, id); lsSync(c); }
 }
 
@@ -1641,11 +1639,24 @@ function initListeners() {
       const byId = {};
       d.forEach(p => { if (p && p.id) byId[p.id] = p; });
       const incoming = Object.values(byId);
-      // Only update S.pipeline if Firestore returned records.
-      // Guard against an empty snapshot overwriting an already-populated state
-      // (can happen briefly during concurrent writes in Firestore).
-      if (incoming.length > 0 || S.pipeline.length === 0) {
+      const prevLen  = S.pipeline.length;
+      // Anti-wipe guard: only replace S.pipeline when the incoming snapshot looks
+      // plausible. We allow normal growth/deletions (up to prevLen items at once)
+      // but block catastrophically small snapshots that Firestore can emit briefly
+      // during concurrent writes or reconnections.
+      //
+      //  • If we already have data: only accept if incoming has ≥ 50% of current
+      //    OR at most 2 fewer (covers drag-move + delete-one scenarios).
+      //  • If current pipeline is empty: always accept (first load).
+      const acceptable = prevLen === 0
+        || incoming.length >= prevLen - 2
+        || incoming.length >= Math.floor(prevLen * 0.5);
+      if (incoming.length > 0 && acceptable) {
         S.pipeline = incoming;
+      } else if (incoming.length === 0 && prevLen === 0) {
+        S.pipeline = incoming; // truly empty on first load
+      } else if (!acceptable) {
+        console.warn("[CRM] Pipeline snapshot rejected (wipe-guard):", incoming.length, "vs current", prevLen);
       }
       // Debounce re-render to avoid rapid successive renders during bulk writes
       clearTimeout(window._pipelineDebounce);
@@ -2004,11 +2015,6 @@ function rPipeline() {
                   <button class="iBtn"        onclick="openHistorial('${p.id}')"         title="Ver historial" style="background:var(--purD);color:var(--pur)">📋</button>
                   <button class="iBtn iDel"   onclick="removeItem('pipeline','${p.id}')" title="Eliminar">🗑</button>
                 </div>
-                <select class="kcard-move" title="Mover a etapa" aria-label="Mover prospecto a etapa"
-                  onchange="moverEtapa('${p.id}',this.value);setTimeout(()=>{this.value='';},200)">
-                  <option value="" disabled selected>↕ Cambiar etapa…</option>
-                  ${ETAPAS.map(x=>`<option value="${x.id}" ${x.id===p.etapa?'disabled':''} style="${x.id===p.etapa?'font-weight:700;color:var(--cyan)':''}">${x.id===p.etapa?'✓ ':''} ${x.label}</option>`).join("")}
-                </select>
               </div>`;
             }).join("")
         }
