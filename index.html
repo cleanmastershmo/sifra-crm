@@ -2133,34 +2133,29 @@ async function moverEtapa(id, etapa) {
     toast("Error al mover prospecto", "error");
     // Fall through to finally so the lock is always released
   } finally {
-    // ── EXTENDED LOCK: keep pipeline locked 800ms, then do authoritative fetch ──
-    // Any onSnapshot that arrives during this window is safely ignored.
-    // After 800ms we fetch the confirmed state directly from Firestore,
-    // then release the lock. Eliminates ALL timing races with onSnapshot.
-    window._pipelineBuffered = null;
+    // ── EXTENDED LOCK: hold for 500ms, then apply the Firestore-confirmed snapshot ──
+    // Firestore fires onSnapshot when it applies the write to its local cache — this
+    // happens BEFORE the await resolves, so by the time finally runs the snapshot is
+    // already buffered in _pipelineBuffered with the CONFIRMED server data.
+    // We do NOT clear the buffer here — we let the timer apply it.
+    // (We avoid db.collection().get() because it can return stale local cache data.)
     clearTimeout(window._pipelineLockTimeout);
-    window._pipelineLockTimeout = setTimeout(async function() {
-      try {
-        if (useFirebase && db) {
-          const snap = await db.collection("pipeline").get();
-          const rows = snap.docs.map(function(doc) {
-            const data = doc.data();
-            if (data.createdAt && data.createdAt.toDate) data.createdAt = data.createdAt.toDate().toISOString();
-            return Object.assign({ id: doc.id }, data);
-          }).sort(function(a, b) { return new Date(b.createdAt||0) - new Date(a.createdAt||0); });
-          if (rows.length > 0) {
-            S.pipeline = rows;
-            window._pipelineLastKnownGood = rows.slice();
-          }
+    window._pipelineLockTimeout = setTimeout(function() {
+      // Apply the Firestore-confirmed snapshot that arrived during the lock
+      var buf = window._pipelineBuffered;
+      window._pipelineBuffered = null;
+      if (buf && buf.length > 0) {
+        var prevLen = S.pipeline.length;
+        var ok = prevLen === 0 || buf.length >= prevLen - 2 || buf.length >= Math.floor(prevLen * 0.5);
+        if (ok) {
+          S.pipeline = buf;
+          window._pipelineLastKnownGood = buf.slice();
         }
-      } catch(fetchErr) {
-        console.warn("[CRM] Post-move pipeline sync failed:", fetchErr);
-        // S.pipeline retains the optimistic state — board stays correct
-      } finally {
-        window._pipelineLock = false;
-        refreshAll();
       }
-    }, 800);
+      // If no snapshot arrived (very rare), S.pipeline keeps the optimistic state — fine.
+      window._pipelineLock = false;
+      refreshAll();
+    }, 500);
   }
 
   if (etapa === "6-Cerrado") {
@@ -3732,31 +3727,22 @@ async function dndDropOnCard(e, targetCardId, targetEtapa) {
       rPipeline();
       toast("Error al mover prospecto", "error");
     } finally {
-      // ── EXTENDED LOCK: same pattern as moverEtapa ──
-      // Keep locked 800ms, then do one authoritative .get() and release.
-      window._pipelineBuffered = null;
+      // ── EXTENDED LOCK: same pattern as moverEtapa (buffered snapshot, no .get()) ──
       clearTimeout(window._pipelineLockTimeout);
-      window._pipelineLockTimeout = setTimeout(async function() {
-        try {
-          if (useFirebase && db) {
-            const snap = await db.collection("pipeline").get();
-            const rows = snap.docs.map(function(doc) {
-              const data = doc.data();
-              if (data.createdAt && data.createdAt.toDate) data.createdAt = data.createdAt.toDate().toISOString();
-              return Object.assign({ id: doc.id }, data);
-            }).sort(function(a, b) { return new Date(b.createdAt||0) - new Date(a.createdAt||0); });
-            if (rows.length > 0) {
-              S.pipeline = rows;
-              window._pipelineLastKnownGood = rows.slice();
-            }
+      window._pipelineLockTimeout = setTimeout(function() {
+        var buf = window._pipelineBuffered;
+        window._pipelineBuffered = null;
+        if (buf && buf.length > 0) {
+          var prevLen = S.pipeline.length;
+          var ok = prevLen === 0 || buf.length >= prevLen - 2 || buf.length >= Math.floor(prevLen * 0.5);
+          if (ok) {
+            S.pipeline = buf;
+            window._pipelineLastKnownGood = buf.slice();
           }
-        } catch(fetchErr) {
-          console.warn("[CRM] Post-move pipeline sync failed:", fetchErr);
-        } finally {
-          window._pipelineLock = false;
-          refreshAll();
         }
-      }, 800);
+        window._pipelineLock = false;
+        refreshAll();
+      }, 500);
     }
     if (targetEtapa === "6-Cerrado") {
       const p = S.pipeline.find(x => x.id === id);
