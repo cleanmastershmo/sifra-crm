@@ -2100,9 +2100,9 @@ async function moverEtapa(id, etapa) {
   const etapaAnt = prev.etapa || "";
   if (etapaAnt === etapa) return; // no change needed
 
-  // ── LOCK: block onSnapshot from re-rendering while this async move is in flight ──
-  // Without this, Firestore's onSnapshot fires mid-await and overwrites the optimistic
-  // board state, causing every card to disappear until the next F5.
+  // ── LOCK: block onSnapshot from updating S.pipeline during this move ──
+  // Cancel any pending post-move unlock from a previous rapid move
+  clearTimeout(window._pipelineLockTimeout);
   window._pipelineLock = true;
   window._pipelineBuffered = null;
 
@@ -2131,18 +2131,36 @@ async function moverEtapa(id, etapa) {
     prev.etapa = etapaAnt; prev.ultimaActividad = today();
     rPipeline();
     toast("Error al mover prospecto", "error");
-    return;
+    // Fall through to finally so the lock is always released
   } finally {
-    // ── UNLOCK: release the lock and apply any buffered Firestore snapshot ──
-    window._pipelineLock = false;
-    if (window._pipelineBuffered && window._pipelineBuffered.length > 0) {
-      // A snapshot arrived while we were locked — apply it now (server confirmed state)
-      const buf = window._pipelineBuffered;
-      window._pipelineBuffered = null;
-      const prevLen = S.pipeline.length;
-      const ok = prevLen === 0 || buf.length >= prevLen - 2 || buf.length >= Math.floor(prevLen * 0.5);
-      if (ok) { S.pipeline = buf; refreshAll(); }
-    }
+    // ── EXTENDED LOCK: keep pipeline locked 800ms, then do authoritative fetch ──
+    // Any onSnapshot that arrives during this window is safely ignored.
+    // After 800ms we fetch the confirmed state directly from Firestore,
+    // then release the lock. Eliminates ALL timing races with onSnapshot.
+    window._pipelineBuffered = null;
+    clearTimeout(window._pipelineLockTimeout);
+    window._pipelineLockTimeout = setTimeout(async function() {
+      try {
+        if (useFirebase && db) {
+          const snap = await db.collection("pipeline").get();
+          const rows = snap.docs.map(function(doc) {
+            const data = doc.data();
+            if (data.createdAt && data.createdAt.toDate) data.createdAt = data.createdAt.toDate().toISOString();
+            return Object.assign({ id: doc.id }, data);
+          }).sort(function(a, b) { return new Date(b.createdAt||0) - new Date(a.createdAt||0); });
+          if (rows.length > 0) {
+            S.pipeline = rows;
+            window._pipelineLastKnownGood = rows.slice();
+          }
+        }
+      } catch(fetchErr) {
+        console.warn("[CRM] Post-move pipeline sync failed:", fetchErr);
+        // S.pipeline retains the optimistic state — board stays correct
+      } finally {
+        window._pipelineLock = false;
+        refreshAll();
+      }
+    }, 800);
   }
 
   if (etapa === "6-Cerrado") {
@@ -3687,7 +3705,8 @@ async function dndDropOnCard(e, targetCardId, targetEtapa) {
     rPipeline();
   } else {
     // ── Different column: move + place at specific position ──
-    // Use same lock+optimistic pattern as moverEtapa to prevent board-wipe bug
+    // Use same extended-lock pattern as moverEtapa
+    clearTimeout(window._pipelineLockTimeout);
     window._pipelineLock = true;
     window._pipelineBuffered = null;
     const prevEtapa = prospect.etapa;
@@ -3713,15 +3732,31 @@ async function dndDropOnCard(e, targetCardId, targetEtapa) {
       rPipeline();
       toast("Error al mover prospecto", "error");
     } finally {
-      // Release lock and apply any buffered Firestore snapshot
-      window._pipelineLock = false;
-      if (window._pipelineBuffered && window._pipelineBuffered.length > 0) {
-        const buf = window._pipelineBuffered;
-        window._pipelineBuffered = null;
-        const prevLen = S.pipeline.length;
-        const ok = prevLen === 0 || buf.length >= prevLen - 2 || buf.length >= Math.floor(prevLen * 0.5);
-        if (ok) { S.pipeline = buf; refreshAll(); }
-      }
+      // ── EXTENDED LOCK: same pattern as moverEtapa ──
+      // Keep locked 800ms, then do one authoritative .get() and release.
+      window._pipelineBuffered = null;
+      clearTimeout(window._pipelineLockTimeout);
+      window._pipelineLockTimeout = setTimeout(async function() {
+        try {
+          if (useFirebase && db) {
+            const snap = await db.collection("pipeline").get();
+            const rows = snap.docs.map(function(doc) {
+              const data = doc.data();
+              if (data.createdAt && data.createdAt.toDate) data.createdAt = data.createdAt.toDate().toISOString();
+              return Object.assign({ id: doc.id }, data);
+            }).sort(function(a, b) { return new Date(b.createdAt||0) - new Date(a.createdAt||0); });
+            if (rows.length > 0) {
+              S.pipeline = rows;
+              window._pipelineLastKnownGood = rows.slice();
+            }
+          }
+        } catch(fetchErr) {
+          console.warn("[CRM] Post-move pipeline sync failed:", fetchErr);
+        } finally {
+          window._pipelineLock = false;
+          refreshAll();
+        }
+      }, 800);
     }
     if (targetEtapa === "6-Cerrado") {
       const p = S.pipeline.find(x => x.id === id);
