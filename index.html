@@ -5271,7 +5271,7 @@ function rUsuarios() {
         <button class="btn btn-primary btn-sm" onclick="adminVerProspectos('${u.username}')">📋 Ver prospectos</button>
         ${isSelf || isMaster
           ? '<button class="btn btn-secondary btn-sm" disabled title="No se puede eliminar">Eliminar</button>'
-          : `<button class="btn btn-danger btn-sm" onclick="adminDeleteUser(${i})">Eliminar</button>`}
+          : `<button id="del-btn-${i}" class="btn btn-danger btn-sm" onclick="adminDeleteUser(${i})">Eliminar</button>`}
       </td>
     </tr>`;
   }).join("");
@@ -5290,12 +5290,12 @@ function adminAddUser() {
   const sucursal = normalizeSucursal(sucEl?.value);
   const password = (pwdEl?.value || "123").trim() || "123";
 
-  if (username.length < 3) { alert("Escribe el nombre completo del usuario."); return; }
-  if (password.length < 3) { alert("La contraseña debe tener al menos 3 caracteres."); return; }
+  if (username.length < 3) { toast("Escribe el nombre completo del usuario.", "warning"); return; }
+  if (password.length < 3) { toast("La contraseña debe tener al menos 3 caracteres.", "warning"); return; }
 
   const users = getUsers();
   if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-    alert("Ya existe un usuario con ese nombre.");
+    toast("Ya existe un usuario con ese nombre.", "error");
     return;
   }
 
@@ -5314,15 +5314,32 @@ function adminDeleteUser(idx) {
   const users = getUsers();
   const u = users[idx];
   if (!u) return;
-  if (u.username === me.username) { alert("No puedes eliminar tu propio usuario mientras estás conectado."); return; }
-  if (u.username === ADMIN_MASTER_USER) { alert("No se puede eliminar el administrador principal."); return; }
+  if (u.username === me.username) { toast("No puedes eliminar tu propio usuario mientras estás conectado.", "warning"); return; }
+  if (u.username === ADMIN_MASTER_USER) { toast("No se puede eliminar el administrador principal.", "warning"); return; }
 
-  const assigned = S.pipeline.filter(p => (p.vendedor || "") === u.username).length;
-  const msg = assigned > 0
-    ? `Eliminar ${u.username}? Tiene ${assigned} prospectos asignados. Los registros conservarán ese nombre hasta que los reasignes.`
-    : `Eliminar ${u.username}?`;
-  if (!confirm(msg)) return;
+  // Two-click confirmation: first click sets a pending flag, second click executes.
+  const btnId = "del-btn-" + idx;
+  const btn = document.getElementById(btnId);
+  if (btn && btn.dataset.confirm !== "1") {
+    // First click — ask for confirmation inline
+    btn.dataset.confirm = "1";
+    btn.textContent = "¿Confirmar?";
+    btn.style.background = "#c0392b";
+    const assigned = S.pipeline.filter(p => (p.vendedor || "") === u.username).length;
+    if (assigned > 0) toast(`⚠️ ${u.username} tiene ${assigned} prospectos asignados. Haz clic de nuevo para eliminar.`, "warning");
+    else toast(`Haz clic de nuevo en "¿Confirmar?" para eliminar a ${u.username}.`, "warning");
+    // Auto-reset after 4 seconds if user doesn't confirm
+    setTimeout(() => {
+      if (btn && btn.dataset.confirm === "1") {
+        btn.dataset.confirm = "0";
+        btn.textContent = "Eliminar";
+        btn.style.background = "";
+      }
+    }, 4000);
+    return;
+  }
 
+  // Second click — execute delete
   users.splice(idx, 1);
   saveUsers(users);
   if (useFirebase && db) {
@@ -5331,7 +5348,7 @@ function adminDeleteUser(idx) {
   }
   populateVendedorFilters();
   rUsuarios();
-  toast("Usuario eliminado: " + u.username, "info");
+  toast("✅ Usuario eliminado: " + u.username, "info");
 }
 
 function adminUpdateSucursal(idx, sucursal) {
