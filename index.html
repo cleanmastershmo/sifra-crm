@@ -1785,10 +1785,13 @@ function nav(name) {
 // ============================================================
 function rDashboard() {
   const _pipeAll = filterByVendedor(S.pipeline, "dash-vend-filter");
-  const activos = _pipeAll.filter(p => !["6-Cerrado","7-Perdido"].includes(p.etapa));
+  // Only count records whose etapa matches a real pipeline stage (ignores orphaned/invalid records)
+  const _validEtapaIds = new Set(ETAPAS.filter(e => !["6-Cerrado","7-Perdido"].includes(e.id)).map(e => e.id));
+  const activos = _pipeAll.filter(p => _validEtapaIds.has(p.etapa));
   const conFecha = activos.filter(p => p.fechaProxPaso);
   const venc = conFecha.filter(p => dias(p.fechaProxPaso) < 0).length;
-  const total = _pipeAll.filter(p => p.etapa !== "7-Perdido").reduce((s,p) => s + (p.potencialMensual||0), 0);
+  const _allValidIds = new Set(ETAPAS.filter(e => e.id !== "7-Perdido").map(e => e.id));
+  const total = _pipeAll.filter(p => _allValidIds.has(p.etapa)).reduce((s,p) => s + (p.potencialMensual||0), 0);
 
   document.getElementById("k-pros").textContent = activos.length;
   document.getElementById("k-tar").textContent  = conFecha.length;
@@ -4982,16 +4985,15 @@ function isAssignableUser(u) {
 function getUsers() {
   try {
     const stored = JSON.parse(localStorage.getItem("sifra_crm_users") || "null");
-    if (!stored) {
+    if (!stored || stored.length === 0) {
+      // First ever launch — seed with defaults
       localStorage.setItem("sifra_crm_users", JSON.stringify(DEFAULT_USERS));
-      return DEFAULT_USERS;
+      return DEFAULT_USERS.map(u => ({...u, role: normalizeRole(u.role), active: true}));
     }
-    const byName = {};
-    [...DEFAULT_USERS, ...stored].forEach(u => {
-      if (!u || !u.username) return;
-      byName[u.username.toLowerCase()] = {...u, role: normalizeRole(u.role), active: u.active !== false};
-    });
-    return Object.values(byName);
+    // Return stored data as-is (normalized), WITHOUT merging DEFAULT_USERS so deletions persist
+    return stored
+      .filter(u => u && u.username)
+      .map(u => ({...u, role: normalizeRole(u.role), active: u.active !== false}));
   } catch { return DEFAULT_USERS; }
 }
 
@@ -5006,6 +5008,7 @@ function saveUsers(users) {
       username: String(u.username).trim(),
       password: String(u.password || "123"),
       role: normalizeRole(u.role),
+      sucursal: normalizeSucursal(u.sucursal),
       active: u.active !== false
     }));
   localStorage.setItem("sifra_crm_users", JSON.stringify(clean));
@@ -5022,15 +5025,21 @@ async function loadUsersFromCloud() {
   try {
     const snap = await db.collection("users").get();
     if (snap.empty) {
+      // No cloud data yet — push current local list to cloud
       saveUsers(getUsers());
       return;
     }
     const cloudUsers = snap.docs.map(d => d.data()).filter(u => u && u.username);
-    const merged = {};
-    [...DEFAULT_USERS, ...cloudUsers].forEach(u => {
-      merged[u.username.toLowerCase()] = {...u, role: normalizeRole(u.role), active: u.active !== false};
-    });
-    localStorage.setItem("sifra_crm_users", JSON.stringify(Object.values(merged)));
+    if (cloudUsers.length === 0) { saveUsers(getUsers()); return; }
+    // Use cloud data as authoritative source — do NOT merge DEFAULT_USERS so deletions persist
+    const clean = cloudUsers.map(u => ({
+      username: String(u.username || "").trim(),
+      password: String(u.password || "123"),
+      role: normalizeRole(u.role),
+      sucursal: normalizeSucursal(u.sucursal),
+      active: u.active !== false
+    })).filter(u => u.username);
+    localStorage.setItem("sifra_crm_users", JSON.stringify(clean));
   } catch(e) {
     console.error("User load error:", e);
   }
