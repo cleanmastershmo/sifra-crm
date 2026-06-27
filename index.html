@@ -1223,18 +1223,10 @@ td{padding:8px 10px}
     </div>
     <table>
       <thead><tr>
-        <th>Nombre</th><th>Rol</th><th>Contraseña</th><th>Acciones</th>
+        <th>Nombre</th><th>Rol</th><th>Sucursal</th><th>Contraseña</th><th>Acciones</th>
       </tr></thead>
       <tbody id="usr-tbody"></tbody>
     </table>
-  </div>
-  <!-- Assign prospects panel -->
-  <div class="panel admin-only" id="admin-assign-panel" style="margin-bottom:18px;display:none">
-    <div class="ph">
-      <div class="ph-title">🔀 Asignar Prospectos a Responsables</div>
-      <button class="btn btn-secondary btn-sm" onclick="renderAssignPanel()">🔄 Actualizar</button>
-    </div>
-    <div id="assign-panel"><div style="padding:20px;color:var(--t3);font-size:13px">Cargando...</div></div>
   </div>
 </div>
 
@@ -1763,8 +1755,6 @@ function refreshAll() {
 function clearUsuariosAdminView() {
   const tbody = document.getElementById("usr-tbody");
   if (tbody) tbody.innerHTML = "";
-  const panel = document.getElementById("assign-panel");
-  if (panel) panel.innerHTML = "";
 }
 
 // ============================================================
@@ -5246,25 +5236,45 @@ function rUsuarios() {
   const users = getUsers();
   const tbody = document.getElementById("usr-tbody");
   if (!tbody) return;
-  const head = tbody.closest("table")?.querySelector("thead tr");
-  if (head) head.innerHTML = "<th>Nombre</th><th>Rol</th><th>Contrasena</th><th>Acciones</th>";
-  tbody.innerHTML = users.map((u, i) => `
-    <tr>
-      <td class="td-emp">${u.username}</td>
-      <td><span class="sbadge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span></td>
-      <td><select class="fselect" onchange="adminUpdateSucursal(${i},this.value)" style="font-size:12px;padding:5px 8px"><option value="Hermosillo" ${normalizeSucursal(u.sucursal)==="Hermosillo"?"selected":""}>Hermosillo</option><option value="Tecate" ${normalizeSucursal(u.sucursal)==="Tecate"?"selected":""}>Tecate</option></select></td>
-      <td style="font-family:monospace;font-size:13px">${"•".repeat(u.password.length)} <span style="color:var(--t3);font-size:11px">(${u.password.length} chars)</span></td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn btn-secondary btn-sm" onclick="adminResetPwd(${i})">🔑 Contraseña</button>
-        <button class="btn btn-primary btn-sm" onclick="adminVerProspectos('${u.username}')">📋 Ver prospectos</button>
-        ${u.username === me.username || u.username === ADMIN_MASTER_USER
-          ? '<button class="btn btn-secondary btn-sm admin-only" disabled title="No se puede eliminar este usuario">Eliminar</button>'
-          : `<button class="btn btn-danger btn-sm admin-only" onclick="adminDeleteUser(${i})">Eliminar</button>`}
+  tbody.innerHTML = users.map((u, i) => {
+    const isMaster = u.username === ADMIN_MASTER_USER;
+    const isSelf   = u.username === me.username;
+    return `<tr>
+      <td class="td-emp" style="min-width:150px">
+        <div style="display:flex;gap:5px;align-items:center">
+          <input class="fsel" id="usr-name-${i}" value="${esc(u.username)}"
+            style="font-size:13px;font-weight:600;width:130px"
+            ${isMaster ? 'disabled title="No se puede renombrar el administrador principal"' : ''}
+            onkeydown="if(event.key==='Enter') adminRenameUser(${i})"
+          />
+          ${!isMaster ? `<button class="iBtn" onclick="adminRenameUser(${i})" title="Guardar nombre" style="min-height:28px;min-width:28px;font-size:13px">💾</button>` : ''}
+        </div>
       </td>
-    </tr>
-  `).join("");
-  // Render assign panel
-  renderAssignPanel();
+      <td><span class="sbadge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span></td>
+      <td>
+        <select class="fselect" onchange="adminUpdateSucursal(${i},this.value)" style="font-size:12px;padding:5px 8px">
+          <option value="Hermosillo" ${normalizeSucursal(u.sucursal)==="Hermosillo"?"selected":""}>Hermosillo</option>
+          <option value="Tecate" ${normalizeSucursal(u.sucursal)==="Tecate"?"selected":""}>Tecate</option>
+        </select>
+      </td>
+      <td style="min-width:190px">
+        <div style="display:flex;gap:5px;align-items:center">
+          <input class="fsel" id="usr-pwd-${i}" type="password" value="${esc(u.password)}"
+            style="font-size:13px;width:120px"
+            onkeydown="if(event.key==='Enter') adminSavePwd(${i})"
+          />
+          <button class="iBtn" onclick="adminTogglePwd(${i})" title="Mostrar/ocultar" style="min-height:28px;min-width:28px;font-size:13px">👁</button>
+          <button class="iBtn" onclick="adminSavePwd(${i})" title="Guardar contraseña" style="min-height:28px;min-width:28px;font-size:13px">💾</button>
+        </div>
+      </td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="adminVerProspectos('${u.username}')">📋 Ver prospectos</button>
+        ${isSelf || isMaster
+          ? '<button class="btn btn-secondary btn-sm" disabled title="No se puede eliminar">Eliminar</button>'
+          : `<button class="btn btn-danger btn-sm" onclick="adminDeleteUser(${i})">Eliminar</button>`}
+      </td>
+    </tr>`;
+  }).join("");
 }
 
 function adminAddUser() {
@@ -5336,81 +5346,6 @@ function adminUpdateSucursal(idx, sucursal) {
   toast("Sucursal actualizada: " + users[idx].username, "success");
 }
 
-function renderAssignPanel() {
-  const panel = document.getElementById("assign-panel");
-  if (!panel) return;
-  const vendedores = getUsers().filter(isAssignableUser);
-  
-  // Get all pipeline prospectos
-  const all = S.pipeline.filter(p => !['7-Perdido'].includes(p.etapa));
-  
-  if (all.length === 0) {
-    panel.innerHTML = '<div style="padding:16px;color:var(--t3);font-size:13px">Sin prospectos activos para asignar.</div>';
-    return;
-  }
-  
-  const vendOpts = vendedores.map(u => `<option value="${u.username}">${u.username} - ${normalizeSucursal(u.sucursal)}</option>`).join('');
-  
-  panel.innerHTML = `
-    <div style="padding:14px 18px;border-bottom:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Reasignar Prospectos</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-        <label style="font-size:12px;color:var(--t2);font-weight:600">Filtrar por responsable:</label>
-        <select class="fsel" id="assign-filter" onchange="renderAssignPanel()" style="font-size:12px">
-          <option value="">Todos</option>
-          ${vendedores.map(u=>`<option value="${u.username}">${u.username}</option>`).join('')}
-        </select>
-      </div>
-    </div>
-    <div style="max-height:340px;overflow-y:auto">
-    <table style="width:100%;border-collapse:collapse">
-      <thead><tr>
-        <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--border)">Empresa</th>
-        <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--border)">Etapa</th>
-        <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--border)">Responsable Actual</th>
-        <th style="padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);background:var(--bg2);border-bottom:1px solid var(--border)">Reasignar a</th>
-      </tr></thead>
-      <tbody>
-        ${all.filter(p => {
-          const af = document.getElementById('assign-filter')?.value || '';
-          return !af || (p.vendedor||'') === af;
-        }).map(p => {
-          const etapaLabel = ETAPAS.find(e=>e.id===p.etapa)?.label || p.etapa;
-          return `<tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:9px 14px;font-weight:600;font-size:13px">${p.empresa}</td>
-            <td style="padding:9px 14px;font-size:12px;color:var(--t2)">${etapaLabel}</td>
-            <td style="padding:9px 14px;font-size:12px">${p.vendedor||'—'}</td>
-            <td style="padding:9px 14px">
-              <div style="display:flex;gap:6px;align-items:center">
-                <select class="fsel" id="assign-sel-${p.id}" style="font-size:12px">
-                  ${vendedores.map(u=>`<option value="${u.username}" ${u.username===p.vendedor?'selected':''}>${u.username}</option>`).join('')}
-                </select>
-                <button class="btn btn-primary btn-sm" onclick="adminAsignar('${p.id}')">✓</button>
-              </div>
-            </td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-    </div>`;
-}
-
-async function adminAsignar(prospectoId) {
-  const sel = document.getElementById('assign-sel-' + prospectoId);
-  if (!sel) return;
-  const nuevoVendedor = sel.value;
-  
-  // Update in S.pipeline
-  const idx = S.pipeline.findIndex(p => p.id === prospectoId);
-  if (idx >= 0) {
-    S.pipeline[idx].vendedor = nuevoVendedor;
-    await dbUpd('pipeline', prospectoId, { vendedor: nuevoVendedor });
-    lsSync('pipeline');
-  }
-  
-  toast('✅ Prospecto asignado a ' + nuevoVendedor, 'success');
-  renderAssignPanel();
-}
 
 function adminVerProspectos(username) {
   // Switch to pipeline view and filter by this vendedor
@@ -5419,19 +5354,59 @@ function adminVerProspectos(username) {
   nav('pipeline');
 }
 
-function adminResetPwd(idx) {
+// Rename a user inline (admin only)
+function adminRenameUser(idx) {
   const me = getCurrentUser();
   if (!me || me.role !== "admin") return;
   const users = getUsers();
   const u = users[idx];
   if (!u) return;
-  const newPwd = prompt("Nueva contraseña para " + u.username + ":", "");
-  if (newPwd === null) return;
-  if (!newPwd || newPwd.trim().length < 3) { alert("La contraseña debe tener al menos 3 caracteres."); return; }
-  users[idx].password = newPwd.trim();
+  if (u.username === ADMIN_MASTER_USER) { toast("No se puede renombrar el administrador principal.", "warning"); return; }
+  const inp = document.getElementById("usr-name-" + idx);
+  if (!inp) return;
+  const newName = inp.value.trim();
+  if (newName.length < 2) { toast("El nombre debe tener al menos 2 caracteres.", "warning"); return; }
+  if (newName === u.username) return; // sin cambio
+  if (users.some((x, j) => j !== idx && x.username.toLowerCase() === newName.toLowerCase())) {
+    toast("Ya existe un usuario con ese nombre.", "error"); return;
+  }
+  const oldName = u.username;
+  users[idx].username = newName;
+  saveUsers(users);
+  // Si el usuario renombrado es el que está en sesión, actualizar la sesión
+  if (oldName === me.username) {
+    const sess = JSON.parse(sessionStorage.getItem("sifra_current_user") || "{}");
+    sess.username = newName;
+    sessionStorage.setItem("sifra_current_user", JSON.stringify(sess));
+    const chip = document.getElementById("user-chip-name");
+    if (chip) chip.textContent = newName + " · " + roleLabel(me.role);
+  }
+  populateVendedorFilters();
+  rUsuarios();
+  toast("✅ Nombre actualizado a " + newName, "success");
+}
+
+// Save password inline (admin only)
+function adminSavePwd(idx) {
+  const me = getCurrentUser();
+  if (!me || me.role !== "admin") return;
+  const users = getUsers();
+  const u = users[idx];
+  if (!u) return;
+  const inp = document.getElementById("usr-pwd-" + idx);
+  if (!inp) return;
+  const newPwd = inp.value.trim();
+  if (newPwd.length < 3) { toast("La contraseña debe tener al menos 3 caracteres.", "warning"); return; }
+  users[idx].password = newPwd;
   saveUsers(users);
   rUsuarios();
   toast("✅ Contraseña de " + u.username + " actualizada", "success");
+}
+
+// Toggle password visibility
+function adminTogglePwd(idx) {
+  const inp = document.getElementById("usr-pwd-" + idx);
+  if (inp) inp.type = inp.type === "password" ? "text" : "password";
 }
 
 // nav() handles usuarios via refreshAll()
